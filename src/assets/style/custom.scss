@@ -1,0 +1,215 @@
+$control-color: #31b9f1;
+$control-hover: #35c4ff;
+
+body, html{
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+  font-size: 20px;
+  color: #fff;
+}
+p {
+  margin: 0;
+  padding: 0;
+}
+
+.add-button {
+  background-color: #31b9f1;
+  border-radius: 50%;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+  width: 50px;
+  height: 50px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  &:hover {
+    background-color: $control-hover
+  }
+}
+
+.submit-button {
+  width: 100%;
+  margin-top: 40px;
+  & > * {
+    width: 100%;
+    background-color: #31b9f1;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 15px 0;
+    color: #fff;
+    font-size: 24px;
+    border-radius: 4px;
+    box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.3);
+    &:hover {
+      background-color: #35c4ff;
+    }
+  }
+}
+
+//infoWindow styles
+/* The popup bubble styling. */
+.popup-bubble {
+  /* Position the bubble centred-above its parent. */
+  position: absolute;
+  top: 55px;
+  left: 0;
+  transform: translate(-50%, -100%);
+  /* Style the bubble. */
+  background-color: rgba(255,255,255,0);
+  padding: 5px;
+  border-radius: 5px;
+  font-family: 'Roboto', sans-serif;
+  overflow-y: hidden;
+  min-height: 175px;
+}
+/* The parent of the bubble. A zero-height div at the top of the tip. */
+.popup-bubble-anchor {
+  /* Position the div a fixed distance above the tip. */
+  position: absolute;
+  width: 100%;
+  bottom: /* TIP_HEIGHT= */ 8px;
+  left: 0;
+}
+/* This element draws the tip. */
+.popup-bubble-anchor::after {
+  //content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Center the tip horizontally. */
+  transform: translate(-50%, 0);
+  /* The tip is a https://css-tricks.com/snippets/css/css-triangle/ */
+  width: 0;
+  height: 0;
+  /* The tip is 8px high, and 12px wide. */
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: /* TIP_HEIGHT= */ 8px solid white;
+}
+/* JavaScript will position this div at the bottom of the popup tip. */
+.popup-container {
+  cursor: auto;
+  height: 0;
+  position: absolute;
+  /* The max width of the info window. */
+  width: 200px;
+}
+
+.destination.balloon {
+  display: flex;
+  flex-flow: column nowrap;
+  position: relative;
+  &.balloon {
+    &:after {
+      display: block;
+      content: '';
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 10px 10px 0 10px;
+      border-color: #ffffff transparent transparent transparent;
+      position: absolute;
+      bottom: -10px;
+      left: calc(50% - 10px);
+    }
+  }
+  &.selected {
+    position: relative;
+    &:after {
+      display: block;
+      content: '';
+      width: 100%;
+      height: 100%;
+      left: 0;
+      top: 0;
+      position: absolute;
+      border-radius: 4px;
+      border: 1px solid $control-color;
+    }
+    background-color: #d6f1fc;
+  }
+  &:first-of-type {
+  }
+  border-radius: 4px;
+  background-color: #fff;
+  box-shadow: 0px 2px 5px 0px rgba(236, 236, 236, 0.75);
+  padding: 17px;
+  & > .dot {
+    border-radius: 50%;
+    width: 11px;
+    height: 11px;
+    border: 3px solid #f6655b;
+    position: absolute;
+    left: -21px;
+    top: 40px;
+    background-color: #fff;
+    z-index: 5;
+  }
+  & > .date {
+    color: #a7a7a7;
+    font-size: 13px;
+  }
+  & > .description {
+    margin-top: 7px;
+    & > p {
+      font-size: 15px;
+      color: #a7a7a7;
+      line-height: 24px;
+    }
+  }
+  & > .name {
+    color: #282828;
+    font-weight: bold;
+    margin-top: 8px;
+    font-size: 20px;
+  }
+  & > .images {
+    display: flex;
+    flex-flow: row nowrap;
+    margin-top: 20px;
+    & > * {
+      &:first-of-type > img {
+        border-top-left-radius: 4px;
+        border-bottom-left-radius: 4px;
+      }
+      &:last-of-type {
+        position: relative;
+        & > .overlay {
+          cursor: pointer;
+          display: flex;
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 60px;
+          width: 100%;
+          background-color: rgba(51, 102, 153, 0.8);
+          flex-flow: row nowrap;
+          justify-content: center;
+          align-items: center;
+          border-top-right-radius: 4px;
+          border-bottom-right-radius: 4px;
+          & > span {
+            font-size: 20px;
+            color: #fff;
+          }
+        }
+        border-top-right-radius: 4px;
+        border-bottom-right-radius: 4px;
+        & > img {
+          border-top-right-radius: 4px;
+          border-bottom-right-radius: 4px;
+        }
+      }
+      margin-left: 1px;
+    }
+  }
+}
+
+.content.balloon {
+  position: absolute;
+  bottom: -300px;
+}
