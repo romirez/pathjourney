@@ -195,6 +195,8 @@ export default {
   data() {
     return {
       coordinates: [],
+      journeylogs: [],
+      segments: [],
       map: {
         center: {lat:18.073099, lng:-63.082199},
         markers: {
