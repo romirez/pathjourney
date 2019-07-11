@@ -6,7 +6,7 @@ const geolib = require('geolib');
 admin.initializeApp();
 
 exports.scheduledVesselFinderImport =
-    functions.pubsub.schedule('every 30 minutes').onRun((context) => {
+    functions.pubsub.schedule('every 60 minutes').onRun((context) => {
         console.log("Getting position")
         var options = {
             uri: 'https://api.vesselfinder.com/vesselslist?userkey=***REMOVED***&format=json',
@@ -14,7 +14,6 @@ exports.scheduledVesselFinderImport =
         };
         return rp(options)
             .then(resp => {
-                var dbg = "";
                 var db = admin.firestore();
                 console.log(JSON.stringify(resp));
                 if (resp.error != null) {
@@ -27,29 +26,30 @@ exports.scheduledVesselFinderImport =
                     location: new admin.firestore.GeoPoint(parseFloat(obj.LATITUDE), parseFloat(obj.LONGITUDE)),
                     course: parseInt(obj.COURSE),
                     speed: parseInt(obj.SPEED),
-                    time: new Date(obj.TIMESTAMP)
+                    time: new Date(obj.TIMESTAMP),
+                    source: "AIS"
                 }
                 if (obj.HEADING != "511") record.heading = obj.HEADING;
 
-                console.log("checking db");
                 var doc = db.collection("coordinates").doc(id);
-                console.log("doc = " + doc.exists);
-                dbg += "doc = " + doc.exists + "\n" + "id=" + id + "\n";
                 if (!doc.exists) {
                     console.log("New coordinates!");
 
-                    var last = db.collection("coordinates").orderBy("time", direction = firestore.Query.DESCENDING).data();
-                    var dist = geolib.getDistance(
-                        { latitude: last["location"].latitude, longitude: last["location"].longitude },
-                        { latitude: obj.LATITUDE, longitude: obj.LONGITUDE }
-                    );
-                    if (dist > 50) {
-                        console.log("new location is far from last location: " + dist + "m, adding");
-                        return db.collection("coordinates").doc(id).set(record);
-                    } else {
-                        console.log("new location is close to last location: " + dist + "m, ignoring");
-                        return;
-                    }
+                    return db.collection("coordinates").orderBy("time", 'desc').limit(1).get().then((res1) => {
+                        var last = res1.docs[0].data();
+                        
+                        var dist = geolib.getDistance(
+                            { latitude: last["location"].latitude, longitude: last["location"].longitude },
+                            { latitude: obj.LATITUDE, longitude: obj.LONGITUDE }
+                        );
+                        if (dist > 50) {
+                            console.log("new location is far from last location: " + dist + "m, adding");
+                            return db.collection("coordinates").doc(id).set(record);
+                        } else {
+                            console.log("new location is close to last location: " + dist + "m, ignoring");
+                            return;
+                        }
+                    })
                 } else {
                     console.log("Coordinates already recorded, updating");
                     return db.collection("coordinates").doc(id).set(record);
@@ -67,7 +67,6 @@ exports.vesselFinderImport = functions.https.onRequest((req, res) => {
     };
     return rp(options)
         .then(resp => {
-            var dbg = "";
             var db = admin.firestore();
             if (resp.error != null) {
                 console.log("error: " + resp.error);
@@ -81,33 +80,40 @@ exports.vesselFinderImport = functions.https.onRequest((req, res) => {
                 location: new admin.firestore.GeoPoint(parseFloat(obj.LATITUDE), parseFloat(obj.LONGITUDE)),
                 course: parseInt(obj.COURSE),
                 speed: parseInt(obj.SPEED),
-                time: new Date(obj.TIMESTAMP)
+                time: new Date(obj.TIMESTAMP),
+                source: "AIS"
             }
             if (obj.HEADING != "511") record.heading = obj.HEADING;
             console.log("checking db");
             var doc = db.collection("coordinates").doc(id);
             console.log("doc = " + doc.exists);
-            dbg += "doc = " + doc.exists + "\n" + "id=" + id + "\n";
             if (!doc.exists) {
                 console.log("New coordinates!");
 
-                var last = db.collection("coordinates").orderBy("time", direction = firestore.Query.DESCENDING).data();
-                var dist = geolib.getDistance(
-                    { latitude: last["location"].latitude, longitude: last["location"].longitude },
-                    { latitude: obj.LATITUDE, longitude: obj.LONGITUDE }
-                );
-                if (dist > 50) {
-                    console.log("new location is far from last location: " + dist + "m, adding");
-                    return db.collection("coordinates").doc(id).set(record);
-                } else {
-                    console.log("new location is close to last location: " + dist + "m, ignoring");
-                    return;
-                }
+                return db.collection("coordinates").orderBy("time", 'desc').limit(1).get().then((res1) => {
+                    var last = res1.docs[0].data();
+                    console.log(JSON.stringify(last));
+
+                    var dist = geolib.getDistance(
+                        { latitude: last["location"].latitude, longitude: last["location"].longitude },
+                        { latitude: obj.LATITUDE, longitude: obj.LONGITUDE }
+                    );
+                    if (dist > 50) {
+                        console.log("new location is far from last location: " + dist + "m, adding");
+                        return db.collection("coordinates").doc(id).set(record).then(function() {
+                            res.status(200).send("Success!");
+                            return;
+                        });
+                    } else {
+                        console.log("new location is close to last location: " + dist + "m, ignoring");
+                        res.status(200).send("Success!");
+                        return;
+                    }
+                })
             } else {
                 console.log("Coordinates already recorded, updating");
                 return db.collection("coordinates").doc(id).set(record);
             }
-            return db.collection("coordinates").doc(id).set(record).then(function () { res.status(200).send(dbg + "\n" + "Success!"); });
         }).catch(function (err) {
             console.error(err);
             res.status(200).send("Failure! \n" + err);

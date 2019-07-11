@@ -13,7 +13,7 @@
                     </custom-input>
                 </div>
                 <div class="submit-button">
-                    <input type="button" value="Submit">
+                    <input type="button" value="Submit" v-on:click="login()">
                 </div>
             </div>
         </div>
@@ -28,6 +28,20 @@
       return {
         password: ''
       }
+    },
+    methods: {
+        login() {
+                if(this.password != "") {
+                    if(this.password == "test") {
+                        this.$emit("authenticated", true);
+                        this.$router.replace({ name: "home" });
+                    } else {
+                        console.log("The username and / or password is incorrect");
+                    }
+                } else {
+                    console.log("A username and password must be present");
+                }
+            }
     }
   }
 </script>
@@ -40,7 +54,8 @@
         justify-content: center;
         align-items: center;
         height: 100%;
-        background: url(../assets/images/bg-login.png);
+        background: url(../assets/images/bg-login.jpg);
+        background-size: cover;
     }
     .login-form {
         border-radius: 4px;
