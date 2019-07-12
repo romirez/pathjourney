@@ -26,28 +26,18 @@
           <div class="cruise">
             <p class="date">June 2019</p>
             <div v-for="log in journeylogs" :key="log.id" class="destination">
-              <p class="date">{{log.log_time.toDate().getDate()}}.{{log.log_time.toDate().getMonth() + 1}}.{{log.log_time.toDate().getYear()}}</p>
+              <p
+                class="date"
+              >{{log.log_time.toDate().getDate()}}.{{log.log_time.toDate().getMonth() + 1}}.{{log.log_time.toDate().getYear()}}</p>
               <p class="name">{{log.name}}</p>
-              <div class="images">
-                <div>
-                  <img src="../assets/images/img1.png" alt />
+              <div class="images" v-if="log.photos">
+                <div v-for="photo in log.photos.slice(0, 5)" :key="photo.id" >
+                  <img :src="photo.thumburl" alt />
                 </div>
-                <div>
-                  <img src="../assets/images/img2.png" alt />
-                </div>
-                <div>
-                  <img src="../assets/images/img3.png" alt />
-                </div>
-                <div>
-                  <img src="../assets/images/img4.png" alt />
-                </div>
-                <div>
-                  <img src="../assets/images/img1.png" alt />
-                </div>
-                <div>
-                  <img src="../assets/images/img2.png" alt />
-                  <div class="overlay">
-                    <span>5+</span>
+                <div v-if="log.photos.length > 5">
+                  <img :src="log.photos[5].id + '_thumb.jpg'" alt />
+                  <div v-if="log.photos.length > 6" class="overlay">
+                    <span>+{{log.photos.length - 5}}</span>
                   </div>
                 </div>
               </div>
@@ -104,11 +94,11 @@ export default {
   components: {
     VueCustomScrollbar
   },
-  firestore: {
-    coordinates: firestore.collection("coordinates"),
-    journeylogs: firestore.collection("journeylogs"),
-    segments: firestore.collection("segments")
-  },
+  // firestore: {
+  //   coordinates: firestore.collection("coordinates"),
+  //   journeylogs: firestore.collection("journeylogs"),
+  //   segments: firestore.collection("segments")
+  // },
   data() {
     return {
       coordinates: [],
@@ -131,13 +121,21 @@ export default {
   mounted() {
     this.$refs.mapRef.$mapPromise.then(map => {
       this.map_ref = map;
-      this.init();
+      this.$bind("coordinates", firestore.collection("coordinates")).then(
+        this.$bind("journeylogs", firestore.collection("journeylogs")).then(
+          () => {
+            this.init();
+          }
+        )
+      );
     });
   },
   updated() {
-    this.init()
+    //TODO: need to figure out where to redraw poly and markers (if we want to make it reactive) - this gets called too often when initializing
+    //this.init()
   },
   methods: {
+    // Draw a poly line on map
     drawPoly(coordinates, color, weight, opacity) {
       const polyline_coords = [];
       coordinates.forEach(doc => {
@@ -155,68 +153,76 @@ export default {
       });
       polyline.setMap(this.map_ref);
     },
+    // Draw markers on map based on this.journeylog
     drawMarkers() {
       const Popup = this.createPopupClass(this);
 
       this.journeylogs.forEach(log => {
-        firestore
-          .doc(log["coordinates"])
-          .get()
-          .then(coord => {
-            const marker = new this.google.maps.Marker({
-              position: {
-                lat: coord.data()["location"].latitude,
-                lng: coord.data()["location"].longitude
-              },
-              map: this.map_ref,
-              icon: {
-                url: image_marker,
-                origin: new this.google.maps.Point(0, 0),
-                anchor: new this.google.maps.Point(6, 6),
-                size: new this.google.maps.Size(12, 12)
-              }
-            });
+        const marker = new this.google.maps.Marker({
+          position: {
+            lat: log.coordinates["location"].latitude,
+            lng: log.coordinates["location"].longitude
+          },
+          map: this.map_ref,
+          icon: {
+            url: image_marker,
+            origin: new this.google.maps.Point(0, 0),
+            anchor: new this.google.maps.Point(6, 6),
+            size: new this.google.maps.Size(12, 12)
+          }
+        });
 
-            //note.marker = marker;
-            marker.addListener("click", () => {
-              // this.map.markers.segments.forEach(segment => {
-              //   segment.notes.forEach(note => {
-              //     note.selected = false;
-              //     note.marker.setIcon({
-              //       url: image_marker,
-              //       origin: new this.google.maps.Point(0, 0),
-              //       anchor: new this.google.maps.Point(6, 6),
-              //       size: new this.google.maps.Size(12, 12)
-              //     });
-              //   });
-              // }); // unselect all markers
+        //note.marker = marker;
+        marker.addListener("click", () => {
+          // this.map.markers.segments.forEach(segment => {
+          //   segment.notes.forEach(note => {
+          //     note.selected = false;
+          //     note.marker.setIcon({
+          //       url: image_marker,
+          //       origin: new this.google.maps.Point(0, 0),
+          //       anchor: new this.google.maps.Point(6, 6),
+          //       size: new this.google.maps.Size(12, 12)
+          //     });
+          //   });
+          // }); // unselect all markers
 
-              marker.setIcon({
-                url: image_marker_selected,
-                origin: new this.google.maps.Point(0, 0),
-                anchor: new this.google.maps.Point(10, 10),
-                size: new this.google.maps.Size(20, 20)
-              }); //selected clicked marker
-              const popup = new Popup(
-                new this.google.maps.LatLng(
-                  log["coordinates"]["location"].latitude,
-                  log["coordinates"]["location"].longitude
-                ),
-                document.getElementById("content")
-              );
-              popup.setMap(this.map_ref);
-            });
-          });
+          marker.setIcon({
+            url: image_marker_selected,
+            origin: new this.google.maps.Point(0, 0),
+            anchor: new this.google.maps.Point(10, 10),
+            size: new this.google.maps.Size(20, 20)
+          }); //selected clicked marker
+          const popup = new Popup(
+            new this.google.maps.LatLng(
+              log["coordinates"]["location"].latitude,
+              log["coordinates"]["location"].longitude
+            ),
+            document.getElementById("content")
+          );
+          popup.setMap(this.map_ref);
+        });
       });
     },
     init() {
       console.log("init");
       var date = new Date();
 
-      var thismonth = this.coordinates.filter(function(e) {
-        return e.time > new Date(date.getFullYear(), date.getMonth() - 1, 1);
-      });
+      var thismonth = this.coordinates.filter(
+        c => c.time.toDate() > new Date(date.getFullYear(), date.getMonth(), 1)
+      );
       this.drawPoly(thismonth, "#F6655B", 4, 1);
+      var lastmonth = this.coordinates.filter(
+        c =>
+          c.time.toDate() >
+            new Date(date.getFullYear(), date.getMonth() - 1, 1) &&
+          c.time.toDate() < new Date(date.getFullYear(), date.getMonth(), 1)
+      );
+      this.drawPoly(lastmonth, "#F6655B", 2, 1);
+      var alltime = this.coordinates.filter(
+        c =>
+          c.time.toDate() < new Date(date.getFullYear(), date.getMonth() - 1, 1)
+      );
+      this.drawPoly(alltime, "#F6655B", 1, 0.8);
       this.drawMarkers();
     },
     createPopupClass(context) {
