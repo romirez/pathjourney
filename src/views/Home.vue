@@ -5,7 +5,7 @@
         <div class="logo">
           <img src="../assets/images/home-logo.png" alt />
         </div>
-        <div class="add-button">
+        <div class="add-button" @click="showAddLog">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -20,7 +20,11 @@
           </svg>
         </div>
       </div>
-      <vue-custom-scrollbar class="scroll-area log" :settings="settings" @ps-scroll-y="scrollHanle">
+      <vue-custom-scrollbar
+        class="scroll-area log"
+        :settings="settings"
+        @ps-scroll-y="scrollHandle"
+      >
         <p>Journey Log</p>
         <div class="cruises">
           <div class="cruise">
@@ -28,10 +32,13 @@
             <div v-for="log in journeylogs" :key="log.id" class="destination">
               <p
                 class="date"
-              >{{log.log_time.toDate().getDate()}}.{{log.log_time.toDate().getMonth() + 1}}.{{log.log_time.toDate().getYear()}}</p>
+              >{{log.log_time.toDate().getDate()}}.{{log.log_time.toDate().getMonth() + 1}}.{{log.log_time.toDate().getFullYear()}}</p>
               <p class="name">{{log.name}}</p>
+              <div class="description" v-if="log.notes">
+                <p>{{log.notes}}</p>
+              </div>
               <div class="images" v-if="log.photos">
-                <div v-for="photo in log.photos.slice(0, 5)" :key="photo.id" >
+                <div v-for="photo in log.photos.slice(0, 5)" :key="photo.id">
                   <img :src="photo.thumburl" alt />
                 </div>
                 <div v-if="log.photos.length > 5">
@@ -47,33 +54,35 @@
       </vue-custom-scrollbar>
     </div>
     <div class="map">
-      <!--<iframe src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d1949267.7723894767!2d-63.290313000554626!3d17.403933846161287!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1sst+martin+google+maps!5e0!3m2!1sru!2sru!4v1562323202208!5m2!1sru!2sru" width="600" height="450" frameborder="0" style="border:0" allowfullscreen></iframe>-->
-      <GmapMap :center="map.center" :zoom="7" style="width: 100%; height: 100%" ref="mapRef"></GmapMap>
+      <GmapMap :center="map.center" :zoom="7" style="width: 100%; height: 100%" ref="mapRef">
+        <!-- leave for better days when I can properly implement this :(
+        <gmap-marker
+          v-for="log in journeylogs"
+          :key="log.id"
+          :position="{lat: log['coordinates'].location.latitude, lng: 0}"
+          :opacity="1"
+          :draggable="false"
+          :icon="iconSettings()"
+        ></gmap-marker>
+        -->
+      </GmapMap>
     </div>
+    <AddLog v-if="isAddLogVisible" @close="hideAddLog" @submit="addNewLog"></AddLog>
     <div id="content" class="content balloon">
-      <div class="destination balloon">
-        <p class="date">{{map.current_info.date}}</p>
-        <p class="name">{{map.current_info.note_name}}</p>
-        <div class="images">
-          <div>
-            <img src="../assets/images/img1.png" alt />
+      <div class="destination balloon" v-if="map.selected">
+        <p
+          class="date"
+        >{{map.selected.log_time.toDate().getDate()}}.{{map.selected.log_time.toDate().getMonth() + 1}}.{{map.selected.log_time.toDate().getYear()}}</p>
+        <p class="name">{{map.selected.name}}</p>
+        <p class="description" v-if="map.selected.notes">{{map.selected.notes}}</p>
+        <div class="images" v-if="map.selected.photos">
+          <div v-for="photo in map.selected.photos.slice(0, 5)" :key="photo.id">
+            <img :src="photo.thumburl" alt />
           </div>
-          <div>
-            <img src="../assets/images/img2.png" alt />
-          </div>
-          <div>
-            <img src="../assets/images/img3.png" alt />
-          </div>
-          <div>
-            <img src="../assets/images/img4.png" alt />
-          </div>
-          <div>
-            <img src="../assets/images/img1.png" alt />
-          </div>
-          <div>
-            <img src="../assets/images/img2.png" alt />
-            <div class="overlay">
-              <span>5+</span>
+          <div v-if="map.selected.photos.length > 5">
+            <img :src="map.selected.photos[5].id + '_thumb.jpg'" alt />
+            <div v-if="map.selected.photos.length > 6" class="overlay">
+              <span>+{{map.selected.photos.length - 5}}</span>
             </div>
           </div>
         </div>
@@ -88,17 +97,14 @@ import * as VueGoogleMaps from "vue2-google-maps";
 import image_marker from "../assets/images/marker.png";
 import image_marker_selected from "../assets/images/marker-selected.png";
 import { firestore } from "../firebase";
+import AddLog from '../components/addlog.vue'
 
 export default {
   name: "Home",
   components: {
-    VueCustomScrollbar
+    VueCustomScrollbar,
+    AddLog
   },
-  // firestore: {
-  //   coordinates: firestore.collection("coordinates"),
-  //   journeylogs: firestore.collection("journeylogs"),
-  //   segments: firestore.collection("segments")
-  // },
   data() {
     return {
       coordinates: [],
@@ -106,13 +112,14 @@ export default {
       segments: [],
       map: {
         center: { lat: 42.36197, lng: 8.773408 },
-        current_info: {
-          date: "27.06.2019",
-          note_name: "Genoa",
-          img_urls: [] //urls will be there
-        }
+        selected: null,
+        markers: {}
       },
-      map_ref: null
+      map_ref: null,
+      settings: {
+        maxScrollbarLength: 60
+      },
+      isAddLogVisible: false
     };
   },
   computed: {
@@ -121,10 +128,11 @@ export default {
   mounted() {
     this.$refs.mapRef.$mapPromise.then(map => {
       this.map_ref = map;
+
       this.$bind("coordinates", firestore.collection("coordinates")).then(
         this.$bind("journeylogs", firestore.collection("journeylogs")).then(
           () => {
-            this.init();
+            this.drawMap();
           }
         )
       );
@@ -135,6 +143,20 @@ export default {
     //this.init()
   },
   methods: {
+    showAddLog() {
+      this.isAddLogVisible = true;
+    },
+    hideAddLog() {
+      this.isAddLogVisible = false;
+    },
+    addNewLog(log) {
+      console.log ("add log " + JSON.stringify(log));
+      this.hideAddLog();
+    },
+    scrollHandle() {
+      console.log("scrolling");
+    },
+
     // Draw a poly line on map
     drawPoly(coordinates, color, weight, opacity) {
       const polyline_coords = [];
@@ -153,9 +175,11 @@ export default {
       });
       polyline.setMap(this.map_ref);
     },
+
     // Draw markers on map based on this.journeylog
     drawMarkers() {
       const Popup = this.createPopupClass(this);
+      this.map.markers = [];
 
       this.journeylogs.forEach(log => {
         const marker = new this.google.maps.Marker({
@@ -172,20 +196,10 @@ export default {
           }
         });
 
-        //note.marker = marker;
-        marker.addListener("click", () => {
-          // this.map.markers.segments.forEach(segment => {
-          //   segment.notes.forEach(note => {
-          //     note.selected = false;
-          //     note.marker.setIcon({
-          //       url: image_marker,
-          //       origin: new this.google.maps.Point(0, 0),
-          //       anchor: new this.google.maps.Point(6, 6),
-          //       size: new this.google.maps.Size(12, 12)
-          //     });
-          //   });
-          // }); // unselect all markers
-
+        this.map.markers.push({ log: log, marker: marker, selected: false });
+        marker.addListener("mouseover", () => {
+          console.log("mouseover");
+          this.map.selected = log;
           marker.setIcon({
             url: image_marker_selected,
             origin: new this.google.maps.Point(0, 0),
@@ -201,9 +215,23 @@ export default {
           );
           popup.setMap(this.map_ref);
         });
+        marker.addListener("mouseout", () => {
+          console.log("mouseout");
+          this.map.markers.forEach(marker => {
+            marker.selected = false;
+            marker.marker.setIcon({
+              url: image_marker,
+              origin: new this.google.maps.Point(0, 0),
+              anchor: new this.google.maps.Point(6, 6),
+              size: new this.google.maps.Size(12, 12)
+            });
+          }); //unselect all markers
+          this.map.selected = null;
+        });
       });
     },
-    init() {
+
+    drawMap() {
       console.log("init");
       var date = new Date();
 
@@ -225,6 +253,7 @@ export default {
       this.drawPoly(alltime, "#F6655B", 1, 0.8);
       this.drawMarkers();
     },
+
     createPopupClass(context) {
       function Popup(position, content) {
         this.position = position;
@@ -276,7 +305,7 @@ export default {
 
         if (display === "block") {
           this.containerDiv.style.left = divPosition.x + "px";
-          this.containerDiv.style.top = divPosition.y + "px";
+          this.containerDiv.style.top = divPosition.y - 60 + "px";
         }
         if (this.containerDiv.style.display !== display) {
           this.containerDiv.style.display = display;
@@ -585,5 +614,4 @@ export default {
       }
     }
   }
-}
-</style>
+}</style>

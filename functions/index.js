@@ -3,6 +3,12 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const geolib = require('geolib');
 
+const os = require('os');
+const path = require("path");
+
+const sharp = require('sharp');
+const fs = require('fs-extra');
+
 admin.initializeApp();
 
 exports.scheduledVesselFinderImport =
@@ -37,7 +43,7 @@ exports.scheduledVesselFinderImport =
 
                     return db.collection("coordinates").orderBy("time", 'desc').limit(1).get().then((res1) => {
                         var last = res1.docs[0].data();
-                        
+
                         var dist = geolib.getDistance(
                             { latitude: last["location"].latitude, longitude: last["location"].longitude },
                             { latitude: obj.LATITUDE, longitude: obj.LONGITUDE }
@@ -100,7 +106,7 @@ exports.vesselFinderImport = functions.https.onRequest((req, res) => {
                     );
                     if (dist > 50) {
                         console.log("new location is far from last location: " + dist + "m, adding");
-                        return db.collection("coordinates").doc(id).set(record).then(function() {
+                        return db.collection("coordinates").doc(id).set(record).then(function () {
                             res.status(200).send("Success!");
                             return;
                         });
@@ -119,3 +125,54 @@ exports.vesselFinderImport = functions.https.onRequest((req, res) => {
             res.status(200).send("Failure! \n" + err);
         });
 });
+
+exports.generateThumbs = functions.storage
+    .object()
+    .onFinalize(async object => {
+        const storage = admin.storage();
+        const bucket = storage.bucket(object.bucket);
+        const filePath = object.name;
+        const fileName = filePath.split('/').pop();
+        const bucketDir = path.dirname(filePath);
+
+        const workingDir = path.join(os.tmpdir(), 'thumbs');
+        const tmpFilePath = path.join(workingDir, 'source.png');
+
+        if (fileName.includes('thumb@') || !object.contentType.includes('image')) {
+            console.log('exiting function');
+            return false;
+        }
+
+        // 1. Ensure thumbnail dir exists
+        await fs.ensureDir(workingDir);
+
+        // 2. Download Source File
+        await bucket.file(filePath).download({
+            destination: tmpFilePath
+        });
+
+        // 3. Resize the images and define an array of upload promises
+        const sizes = [60, 256];
+
+        const uploadPromises = sizes.map(async size => {
+            const thumbName = `thumb@${size}_${fileName}`;
+            const thumbPath = path.join(workingDir, thumbName);
+
+            // Resize source image
+            await sharp(tmpFilePath)
+                .resize(size, size)
+                .toFile(thumbPath);
+
+            // Upload to GCS
+            return bucket.upload(thumbPath, {
+                destination: path.join(bucketDir, thumbName)
+            });
+        });
+
+        // 4. Run the upload operations
+        await Promise.all(uploadPromises);
+
+        // 5. Cleanup remove the tmp/thumbs from the filesystem
+        return fs.remove(workingDir);
+    });
+

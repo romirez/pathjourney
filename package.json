@@ -8,6 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@google-cloud/storage": "^3.0.2",
     "axios": "^0.19.0",
     "core-js": "^2.6.5",
     "firebase": "^6.2.4",
@@ -17,6 +18,7 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.4",
     "sass-loader": "^7.1.0",
+    "sharp": "^0.22.1",
     "vue": "^2.6.10",
     "vue-router": "^3.0.3",
     "vuefire": "^2.0.1"

@@ -3,7 +3,7 @@
         <div class="popup-content">
             <div class="header">
                 <div class="title"><p>{{title}}</p></div>
-                <div class="close-button">
+                <div class="close-button" @click="$emit('close')">
                     <svg
                             xmlns="http://www.w3.org/2000/svg"
                             xmlns:xlink="http://www.w3.org/1999/xlink"
