@@ -8,6 +8,8 @@ const path = require("path");
 
 const sharp = require('sharp');
 const fs = require('fs-extra');
+const UUID = require("uuid-v4");
+
 
 admin.initializeApp();
 
@@ -155,7 +157,7 @@ exports.generateThumbs = functions.storage
         const sizes = [60, 256];
 
         const uploadPromises = sizes.map(async size => {
-            const thumbName = `thumb@${size}_${fileName}`;
+            const thumbName = `${fileName}_thumb@${size}`;
             const thumbPath = path.join(workingDir, thumbName);
 
             // Resize source image
@@ -163,9 +165,24 @@ exports.generateThumbs = functions.storage
                 .resize(size, size)
                 .toFile(thumbPath);
 
+            uuid = UUID();
+
             // Upload to GCS
             return bucket.upload(thumbPath, {
-                destination: path.join(bucketDir, thumbName)
+                destination: path.join(bucketDir, thumbName),
+                metadata: {
+                    metadata: {
+                        firebaseStorageDownloadTokens: uuid
+                    }
+                }
+            }).then((data) => {
+                var db = admin.firestore();
+                file = data[0];
+                if (size == 60){
+                    db.collection("photos").doc(fileName).update({ thumburl: "https://firebasestorage.googleapis.com/v0/b/" + bucket.name + "/o/" + encodeURIComponent(file.name) + "?alt=media&token=" + uuid });
+                } else if (size == 256){
+                    db.collection("photos").doc(fileName).update({ thumb256url: "https://firebasestorage.googleapis.com/v0/b/" + bucket.name + "/o/" + encodeURIComponent(file.name) + "?alt=media&token=" + uuid });
+                }
             });
         });
 

@@ -3,7 +3,7 @@
     <template v-slot:content>
       <div class="destination-info">
         <div class="text-inputs">
-          <custom-input class="info-input" v-model="date" :placeholder="'Date'" :type="'text'"></custom-input>
+          <custom-input class="info-input" v-model="date" :placeholder="'Date'" :type="'date'"></custom-input>
           <custom-input
             class="info-input"
             v-model="location"
@@ -12,8 +12,8 @@
           ></custom-input>
           <custom-input
             class="info-input"
-            v-model="description"
-            :placeholder="'Description'"
+            v-model="notes"
+            :placeholder="'Notes'"
             :type="'text'"
           ></custom-input>
         </div>
@@ -22,7 +22,7 @@
           <div class="images-wrapper">
             <div class="images">
               <div v-for="photo in photos" :key="photo.id">
-                <img :src="photo.url" alt />
+                <img :src="photo.thumburl" alt />
                 <div class="delete-button">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -39,21 +39,7 @@
                 </div>
               </div>
             </div>
-            <FileUploader @downloadURL="addPhoto"></FileUploader>
-            <div class="add-button">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                xmlns:xlink="http://www.w3.org/1999/xlink"
-                width="20px"
-                height="20px"
-              >
-                <path
-                  fill-rule="evenodd"
-                  fill="rgb(255, 255, 255)"
-                  d="M11.000,-0.000 L9.000,-0.000 L9.000,9.000 L-0.000,9.000 L-0.000,11.000 L9.000,11.000 L9.000,20.000 L11.000,20.000 L11.000,11.000 L20.000,11.000 L20.000,9.000 L11.000,9.000 L11.000,-0.000 Z"
-                />
-              </svg>
-            </div>
+            <FileUploader @uploaded="addPhoto"></FileUploader>
           </div>
         </div>
         <div class="submit-button">
@@ -79,20 +65,24 @@ export default {
     return {
       date: "",
       location: "",
-      description: "",
+      notes: "",
       photos: []
     };
   },
   methods: {
     submit() {
       this.$emit("submit", {
-        date: this.date,
-        location: this.location,
-        description: this.description
+        log_time: new Date(this.date),
+        add_time: new Date(),
+        notes: this.notes,
+        photos: this.photos
       });
     },
-    addPhoto(id) {
-        this.photos.push(firestore.collection('photos').doc(id));
+    async addPhoto(id) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        firestore.collection('photos').doc(id).get().then(doc => {
+            this.photos.push(doc.data());
+        })
     }
   }
 };
@@ -171,13 +161,6 @@ export default {
           }
           margin-left: 1px;
         }
-      }
-      & > .add-button {
-        width: 40px;
-        height: 40px;
-        margin-top: 20px;
-        margin-bottom: 5px;
-        margin-left: 20px;
       }
     }
   }

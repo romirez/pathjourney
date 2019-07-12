@@ -88,6 +88,9 @@
         </div>
       </div>
     </div>
+      <loading :active.sync="isLoading" 
+        :can-cancel="false" 
+        :is-full-page="true"></loading>
   </div>
 </template>
 
@@ -97,13 +100,16 @@ import * as VueGoogleMaps from "vue2-google-maps";
 import image_marker from "../assets/images/marker.png";
 import image_marker_selected from "../assets/images/marker-selected.png";
 import { firestore } from "../firebase";
+import Loading from 'vue-loading-overlay';
+import 'vue-loading-overlay/dist/vue-loading.css';
 import AddLog from '../components/addlog.vue'
 
 export default {
   name: "Home",
   components: {
     VueCustomScrollbar,
-    AddLog
+    AddLog,
+    Loading
   },
   data() {
     return {
@@ -119,20 +125,23 @@ export default {
       settings: {
         maxScrollbarLength: 60
       },
-      isAddLogVisible: false
+      isAddLogVisible: false,
+      isLoading: false
     };
   },
   computed: {
     google: VueGoogleMaps.gmapApi
   },
   mounted() {
+    this.isLoading = true;
     this.$refs.mapRef.$mapPromise.then(map => {
       this.map_ref = map;
 
-      this.$bind("coordinates", firestore.collection("coordinates")).then(
-        this.$bind("journeylogs", firestore.collection("journeylogs")).then(
+      this.$bind("coordinates", firestore.collection("coordinates").orderBy("time", 'asc')).then(
+        this.$bind("journeylogs", firestore.collection("journeylogs").orderBy("log_time", 'desc')).then(
           () => {
             this.drawMap();
+            this.isLoading = false;
           }
         )
       );
@@ -151,7 +160,12 @@ export default {
     },
     addNewLog(log) {
       console.log ("add log " + JSON.stringify(log));
-      this.hideAddLog();
+      firestore.collection("coordinates").where('time', '>', log.log_time).orderBy("time", 'asc').limit(1).get().then((res1) => {
+        log.coordinates = res1.docs[0].ref;
+        firestore.collection("journeylogs").add(log);
+        this.hideAddLog();
+        this.drawMap();
+      });
     },
     scrollHandle() {
       console.log("scrolling");
