@@ -3,25 +3,15 @@
     <template v-slot:content>
       <div class="destination-info">
         <div class="text-inputs">
-          <custom-input class="info-input" v-model="date" :placeholder="'Date'" :type="'date'"></custom-input>
-          <custom-input
-            class="info-input"
-            v-model="location"
-            :placeholder="'Location'"
-            :type="'text'"
-          ></custom-input>
-          <custom-input
-            class="info-input"
-            v-model="notes"
-            :placeholder="'Notes'"
-            :type="'text'"
-          ></custom-input>
+          <custom-input class="info-input" v-model="log_time" :placeholder="'Date'" :type="'date'"></custom-input>
+          <custom-input class="info-input" v-model="name" :placeholder="'Name'" :type="'text'"></custom-input>
+          <custom-input class="info-input" v-model="notes" :placeholder="'Notes'" :type="'text'"></custom-input>
         </div>
         <div class="upload-images">
           <div class="title">Add photo</div>
           <div class="images-wrapper">
             <div class="images">
-              <div v-for="photo in photos" :key="photo.id">
+              <div v-for="photo in log.photos" :key="photo.id">
                 <img :src="photo.thumburl" alt />
                 <div class="delete-button">
                   <svg
@@ -54,35 +44,120 @@ import Popup from "../components/controls/custom-popup.vue";
 import CustomInput from "../components/controls/custom-input.vue";
 import FileUploader from "../components/controls/fileuploader.vue";
 import { firestore } from "../firebase";
+import firebase from "firebase/app";
 
 export default {
   name: "AddLog",
   components: { Popup, CustomInput, FileUploader },
-  props: {
-    title: String
-  },
+  props: ["title", "coords"],
   data() {
     return {
-      date: "",
-      location: "",
+      log_time: null,
       notes: "",
-      photos: []
+      name: "",
+      id: null,
+      coordinates: null,
+
+      log: {
+        log_time: null,
+        notes: "",
+        location: null,
+        name,
+        photos: [],
+        draft: true,
+        add_time: new Date()
+      }
     };
+  },
+  mounted() {
+    if (this.coords) {
+      firestore
+        .collection("coordinates")
+        .doc(this.coords).get()
+        .then(doc => {
+          this.coordinates = doc.ref;
+          this.log_time = doc.data()["time"].toDate();
+        });
+    }
+    firestore
+      .collection("journeylogs")
+      .add(this.log)
+      .then(nl => {
+        console.log("created draft " + nl.id);
+        this.id = nl.id;
+        this.$bind("log", firestore.collection("journeylogs").doc(nl.id));
+      });
+  },
+  destroyed() {
+    if (this.log && this.log.draft == true) {
+      console.log("deleting draft " + this.id);
+      firestore
+        .collection("journeylogs")
+        .doc(this.id)
+        .delete();
+    }
   },
   methods: {
     submit() {
-      this.$emit("submit", {
-        log_time: new Date(this.date),
-        add_time: new Date(),
-        notes: this.notes,
-        photos: this.photos
-      });
+      firestore
+        .collection("coordinates")
+        .where("time", ">", this.log_time)
+        .orderBy("time", "asc")
+        .limit(1)
+        .get()
+        .then(res1 => {
+          if (res1.docs.length == 0) {
+            firestore
+              .collection("coordinates")
+              .where("time", "<", this.log_time)
+              .orderBy("time", "desc")
+              .limit(1)
+              .get()
+              .then(res2 => {
+                firestore
+                  .collection("journeylogs")
+                  .doc(this.log.id)
+                  .update({
+                    name: this.name,
+                    log_time: this.log_time,
+                    notes: this.notes,
+                    add_time: new Date(),
+                    coordinates: res2.docs[0].ref,
+                    draft: false
+                  })
+                  .then(doc => {
+                    this.$emit("submit", doc.data());
+                  });
+              });
+          } else {
+            firestore
+              .collection("journeylogs")
+              .doc(this.log.id)
+              .update({
+                name: this.name,
+                log_time: this.log_time,
+                notes: this.notes,
+                add_time: new Date(),
+                coordinates: res1.docs[0].ref,
+                draft: false
+              });
+            this.$emit("submit", this.log);
+          }
+        });
     },
     async addPhoto(id) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        firestore.collection('photos').doc(id).get().then(doc => {
-            this.photos.push(doc.data());
-        })
+      firestore
+        .collection("photos")
+        .doc(id)
+        .get()
+        .then(doc => {
+          firestore
+            .collection("journeylogs")
+            .doc(this.log.id)
+            .update({
+              photos: firebase.firestore.FieldValue.arrayUnion(doc.ref)
+            });
+        });
     }
   }
 };

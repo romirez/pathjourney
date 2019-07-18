@@ -55,19 +55,48 @@
     </div>
     <div class="map">
       <GmapMap :center="map.center" :zoom="7" style="width: 100%; height: 100%" ref="mapRef">
-        <!-- leave for better days when I can properly implement this :(
-        <gmap-marker
+        <GmapMarker
           v-for="log in journeylogs"
           :key="log.id"
-          :position="{lat: log['coordinates'].location.latitude, lng: 0}"
-          :opacity="1"
+          :position="{ lat: log['coordinates'].location._lat, lng: log['coordinates'].location._long}"
+          :clickable="true"
           :draggable="false"
-          :icon="iconSettings()"
-        ></gmap-marker>
-        -->
+          :icon="map.selected == log ? markerSelectedIcon : markerIcon"
+          @mouseover="markerMouseOver(log)"
+          @mouseout="markerMouseOut()"
+        />
+        <div v-for="(path, index) in polypath" :key="index">
+          <gmap-polyline
+            :path="path.coordinates"
+            :editable="false"
+            :draggable="false"
+            :options="{geodesic:true, strokeColor:path.color}"
+          />
+          <gmap-polyline
+            :path="path.coordinates"
+            :editable="false"
+            :draggable="false"
+            :options="{geodesic:true, strokeColor:path.color, strokeOpacity: 0.1, strokeWeight: 40, zIndex: 100}"
+            @click="pathClick(path, $event)"
+            @mouseout="polyMouseOut()"
+            @mousemove="polyMouseMove(path, $event)"
+          />
+        </div>
+        <GmapMarker
+          v-if="map.linehover"
+          :position="map.linehover"
+          :clickable="false"
+          :draggable="false"
+          :icon="markerIcon"
+        />
       </GmapMap>
     </div>
-    <AddLog v-if="isAddLogVisible" @close="hideAddLog" @submit="addNewLog"></AddLog>
+    <AddLog
+      v-if="isAddLogVisible"
+      @close="hideAddLog"
+      @submit="addNewLog"
+      v-bind:coords="selectedCoords"
+    ></AddLog>
     <div id="content" class="content balloon">
       <div class="destination balloon" v-if="map.selected">
         <p
@@ -88,9 +117,10 @@
         </div>
       </div>
     </div>
-      <loading :active.sync="isLoading" 
-        :can-cancel="false" 
-        :is-full-page="true"></loading>
+    <div id="linepopup" class="content balloon">
+      <div class="destination balloon" v-if="map.linehover">{{map.linehover.time}}</div>
+    </div>
+    <loading :active.sync="isLoading" :can-cancel="false" :is-full-page="true"></loading>
   </div>
 </template>
 
@@ -100,9 +130,9 @@ import * as VueGoogleMaps from "vue2-google-maps";
 import image_marker from "../assets/images/marker.png";
 import image_marker_selected from "../assets/images/marker-selected.png";
 import { firestore } from "../firebase";
-import Loading from 'vue-loading-overlay';
-import 'vue-loading-overlay/dist/vue-loading.css';
-import AddLog from '../components/addlog.vue'
+import Loading from "vue-loading-overlay";
+import "vue-loading-overlay/dist/vue-loading.css";
+import AddLog from "../components/addlog.vue";
 
 export default {
   name: "Home",
@@ -119,154 +149,240 @@ export default {
       map: {
         center: { lat: 42.36197, lng: 8.773408 },
         selected: null,
-        markers: {}
+        linehover: null
       },
       map_ref: null,
       settings: {
         maxScrollbarLength: 60
       },
       isAddLogVisible: false,
-      isLoading: false
+      isLoading: false,
+      selectedCoords: null
     };
   },
   computed: {
-    google: VueGoogleMaps.gmapApi
-  },
-  mounted() {
-    this.isLoading = true;
-    this.$refs.mapRef.$mapPromise.then(map => {
-      this.map_ref = map;
-
-      this.$bind("coordinates", firestore.collection("coordinates").orderBy("time", 'asc')).then(
-        this.$bind("journeylogs", firestore.collection("journeylogs").orderBy("log_time", 'desc')).then(
-          () => {
-            this.drawMap();
-            this.isLoading = false;
-          }
-        )
-      );
-    });
-  },
-  updated() {
-    //TODO: need to figure out where to redraw poly and markers (if we want to make it reactive) - this gets called too often when initializing
-    //this.init()
-  },
-  methods: {
-    showAddLog() {
-      this.isAddLogVisible = true;
+    google: VueGoogleMaps.gmapApi,
+    markerIcon() {
+      return {
+        url: image_marker,
+        origin: new this.google.maps.Point(0, 0),
+        anchor: new this.google.maps.Point(6, 6),
+        size: new this.google.maps.Size(12, 12)
+      };
     },
-    hideAddLog() {
-      this.isAddLogVisible = false;
+    markerSelectedIcon() {
+      return {
+        url: image_marker_selected,
+        origin: new this.google.maps.Point(0, 0),
+        anchor: new this.google.maps.Point(10, 10),
+        size: new this.google.maps.Size(20, 20)
+      };
     },
-    addNewLog(log) {
-      console.log ("add log " + JSON.stringify(log));
-      firestore.collection("coordinates").where('time', '>', log.log_time).orderBy("time", 'asc').limit(1).get().then((res1) => {
-        log.coordinates = res1.docs[0].ref;
-        firestore.collection("journeylogs").add(log);
-        this.hideAddLog();
-        this.drawMap();
-      });
-    },
-    scrollHandle() {
-      console.log("scrolling");
-    },
-
-    // Draw a poly line on map
-    drawPoly(coordinates, color, weight, opacity) {
-      const polyline_coords = [];
-      coordinates.forEach(doc => {
-        polyline_coords.push({
-          lat: doc["location"].latitude,
-          lng: doc["location"].longitude
-        });
-      });
-      const polyline = new this.google.maps.Polyline({
-        path: polyline_coords,
-        geodesic: true,
-        strokeColor: color,
-        strokeOpacity: opacity,
-        strokeWeight: weight
-      });
-      polyline.setMap(this.map_ref);
-    },
-
-    // Draw markers on map based on this.journeylog
-    drawMarkers() {
-      const Popup = this.createPopupClass(this);
-      this.map.markers = [];
-
-      this.journeylogs.forEach(log => {
-        const marker = new this.google.maps.Marker({
-          position: {
-            lat: log.coordinates["location"].latitude,
-            lng: log.coordinates["location"].longitude
-          },
-          map: this.map_ref,
-          icon: {
-            url: image_marker,
-            origin: new this.google.maps.Point(0, 0),
-            anchor: new this.google.maps.Point(6, 6),
-            size: new this.google.maps.Size(12, 12)
-          }
-        });
-
-        this.map.markers.push({ log: log, marker: marker, selected: false });
-        marker.addListener("mouseover", () => {
-          console.log("mouseover");
-          this.map.selected = log;
-          marker.setIcon({
-            url: image_marker_selected,
-            origin: new this.google.maps.Point(0, 0),
-            anchor: new this.google.maps.Point(10, 10),
-            size: new this.google.maps.Size(20, 20)
-          }); //selected clicked marker
-          const popup = new Popup(
-            new this.google.maps.LatLng(
-              log["coordinates"]["location"].latitude,
-              log["coordinates"]["location"].longitude
-            ),
-            document.getElementById("content")
-          );
-          popup.setMap(this.map_ref);
-        });
-        marker.addListener("mouseout", () => {
-          console.log("mouseout");
-          this.map.markers.forEach(marker => {
-            marker.selected = false;
-            marker.marker.setIcon({
-              url: image_marker,
-              origin: new this.google.maps.Point(0, 0),
-              anchor: new this.google.maps.Point(6, 6),
-              size: new this.google.maps.Size(12, 12)
-            });
-          }); //unselect all markers
-          this.map.selected = null;
-        });
-      });
-    },
-
-    drawMap() {
-      console.log("init");
+    polypath() {
       var date = new Date();
-
+      const segments = [];
       var thismonth = this.coordinates.filter(
         c => c.time.toDate() > new Date(date.getFullYear(), date.getMonth(), 1)
       );
-      this.drawPoly(thismonth, "#F6655B", 4, 1);
+      const c1 = [];
+      thismonth.forEach(doc => {
+        c1.push({
+          lat: doc["location"].latitude,
+          lng: doc["location"].longitude,
+          id: doc.id,
+          time: doc.time.toDate()
+        });
+      });
+      segments.push({
+        color: "#F6655B",
+        stroke: 4,
+        opacity: 1,
+        coordinates: c1
+      });
+
       var lastmonth = this.coordinates.filter(
         c =>
           c.time.toDate() >
             new Date(date.getFullYear(), date.getMonth() - 1, 1) &&
           c.time.toDate() < new Date(date.getFullYear(), date.getMonth(), 1)
       );
-      this.drawPoly(lastmonth, "#F6655B", 2, 1);
+      const c2 = [];
+      lastmonth.forEach(doc => {
+        c2.push({
+          lat: doc["location"].latitude,
+          lng: doc["location"].longitude,
+          id: doc.id,
+          time: doc.time.toDate()
+        });
+      });
+      segments.push({
+        color: "#F9B55A",
+        stroke: 4,
+        opacity: 1,
+        coordinates: c2
+      });
       var alltime = this.coordinates.filter(
         c =>
           c.time.toDate() < new Date(date.getFullYear(), date.getMonth() - 1, 1)
       );
-      this.drawPoly(alltime, "#F6655B", 1, 0.8);
-      this.drawMarkers();
+      const c3 = [];
+      alltime.forEach(doc => {
+        c3.push({
+          lat: doc["location"].latitude,
+          lng: doc["location"].longitude,
+          id: doc.id,
+          time: doc.time.toDate()
+        });
+      });
+      segments.push({
+        color: "#E0CB91",
+        stroke: 4,
+        opacity: 1,
+        coordinates: c3
+      });
+
+      return segments;
+    }
+  },
+  mounted() {
+    this.isLoading = true;
+    this.$refs.mapRef.$mapPromise.then(map => {
+      this.map_ref = map;
+
+      this.$bind(
+        "coordinates",
+        firestore.collection("coordinates").orderBy("time", "asc")
+      ).then(
+        this.$bind(
+          "journeylogs",
+          firestore
+            .collection("journeylogs")
+            .where("draft", "==", false)
+            .orderBy("log_time", "desc")
+        ).then(() => {
+          this.isLoading = false;
+        })
+      );
+    });
+  },
+  methods: {
+    markerMouseOver(log) {
+      this.map.selected = log;
+      const Popup = this.createPopupClass(this);
+      const popup = new Popup(
+        new this.google.maps.LatLng(
+          log["coordinates"]["location"].latitude,
+          log["coordinates"]["location"].longitude
+        ),
+        document.getElementById("content")
+      );
+      popup.setMap(this.map_ref);
     },
+    markerMouseOut() {
+      this.map.selected = null;
+    },
+    showAddLog() {
+      this.selectedCoords = null;
+      this.isAddLogVisible = true;
+    },
+    hideAddLog() {
+      this.isAddLogVisible = false;
+    },
+    closestPoint(path, e) {
+      var latlng = e.latLng;
+      var needle = {
+        minDistance: 9999999999, //silly high
+        index: -1,
+        latlng: null
+      };
+      path.coordinates.forEach((routePoint, index) => {
+        var dist = this.google.maps.geometry.spherical.computeDistanceBetween(
+          latlng,
+          new this.google.maps.LatLng(routePoint.lat, routePoint.lng)
+        );
+        if (dist < needle.minDistance) {
+          needle.minDistance = dist;
+          needle.index = index;
+          needle.latlng = routePoint;
+        }
+      });
+      return path.coordinates[needle.index];
+    },
+    pathClick(path, e) {
+      var p = this.closestPoint(path, e);
+      // The closest point in the polyline
+      this.selectedCoords = p.id;
+      this.isAddLogVisible = true;
+    },
+    polyMouseMove(path, e) {
+      var p = this.closestPoint(path, e);
+      if (this.map.linehover != p) {
+        console.log("change");
+        this.map.linehover = p;
+        console.log("closest point - " + p.id);
+        const Popup = this.createPopupClass(this);
+        const popup = new Popup(
+          new this.google.maps.LatLng(p.lat, p.lng),
+          document.getElementById("linepopup")
+        );
+        popup.setMap(this.map_ref);
+      }
+    },
+    polyMouseOut() {
+      //this.map.linehover = null;
+    },
+    addNewLog(log) {
+      console.log("add log " + JSON.stringify(log));
+      this.hideAddLog();
+      this.drawMap();
+    },
+    scrollHandle() {
+      console.log("scrolling");
+    },
+
+    // // Draw a poly line on map
+    // drawPoly(coordinates, color, weight, opacity) {
+    //   const polyline_coords = [];
+    //   coordinates.forEach(doc => {
+    //     polyline_coords.push({
+    //       lat: doc["location"].latitude,
+    //       lng: doc["location"].longitude,
+    //       id: doc.id
+    //     });
+    //   });
+    //   const polyline = new this.google.maps.Polyline({
+    //     path: polyline_coords,
+    //     geodesic: true,
+    //     strokeColor: color,
+    //     strokeOpacity: opacity,
+    //     strokeWeight: weight
+    //   });
+    //   polyline.setMap(this.map_ref);
+    //   this.google.maps.event.addListener(polyline, "click", h => {
+    //     var latlng = h.latLng;
+    //     console.log("click! " + latlng);
+    //     var needle = {
+    //       minDistance: 9999999999, //silly high
+    //       index: -1,
+    //       latlng: null
+    //     };
+    //     polyline.getPath().forEach((routePoint, index) => {
+    //       var dist = this.google.maps.geometry.spherical.computeDistanceBetween(
+    //         latlng,
+    //         routePoint
+    //       );
+    //       if (dist < needle.minDistance) {
+    //         needle.minDistance = dist;
+    //         needle.index = index;
+    //         needle.latlng = routePoint;
+    //       }
+    //     });
+    //     // The closest point in the polyline
+    //     console.log("coord: " + polyline_coords[needle.index].id);
+    //     this.selectedCoords = polyline_coords[needle.index].id;
+    //     this.isAddLogVisible = true;
+    //   });
+    // },
 
     createPopupClass(context) {
       function Popup(position, content) {
@@ -628,4 +744,5 @@ export default {
       }
     }
   }
-}</style>
+}
+</style>

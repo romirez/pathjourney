@@ -67,6 +67,93 @@ exports.scheduledVesselFinderImport =
             });
     });
 
+exports.scheduledKVHImport =
+    functions.pubsub.schedule('every 15 minutes').onRun((context) => {
+        console.log("Getting position")
+        var options = {
+            uri: 'http://app.mykvh.com/api/v1/platform/positioning/***REMOVED***/latest.csv'
+        };
+        return rp(options)
+            .then(resp => {
+                var db = admin.firestore();
+                if (resp.error != null) {
+                    console.log("error: " + resp.error);
+                    return;
+                }
+                var obj = resp.split("\n")[1].split(",");
+                var time = new Date(obj[0] + "Z")
+                var id = time.toString();
+                var record = {
+                    location: new admin.firestore.GeoPoint(parseFloat(obj[7]), parseFloat(obj[8])),
+                    time: time,
+                    source: "KVH"
+                }
+                console.log(JSON.stringify(record));
+
+                var doc = db.collection("coordinates").doc(id);
+                if (!doc.exists) {
+                    console.log("New coordinates!");
+
+                    return db.collection("coordinates").where('time', '<', time).orderBy("time", 'desc').limit(1).get().then((res1) => {
+                        return db.collection("coordinates").where('time', '>', time).orderBy("time", 'asc').limit(1).get().then((res2) => {
+                            var dist = 999999999999;
+                            if (res1.docs.length != 0) {
+                                var last = res1.docs[0].data();
+
+                                var dist1 = geolib.getDistance(
+                                    { latitude: last["location"].latitude, longitude: last["location"].longitude },
+                                    { latitude: parseFloat(obj[7]), longitude: parseFloat(obj[8]) }
+                                );
+                                if (dist1 < dist) dist = dist1;
+                            }
+                            if (res2.docs.length != 0) {
+                                var last = res2.docs[0].data();
+
+                                var dist1 = geolib.getDistance(
+                                    { latitude: last["location"].latitude, longitude: last["location"].longitude },
+                                    { latitude: parseFloat(obj[7]), longitude: parseFloat(obj[8]) }
+                                );
+                                if (dist1 < dist) dist = dist1;
+                            }
+                            if (dist > 50) {
+                                console.log("new location is far from closest location: " + dist + "m, adding");
+                                return db.collection("coordinates").doc(id).set(record);
+                            } else {
+                                console.log("new location is close to closest location: " + dist + "m, ignoring");
+                                return;
+                            }
+                        });
+                    });
+                } else {
+                    console.log("Coordinates already recorded, updating");
+                    return db.collection("coordinates").doc(id).set(record);
+                }
+            }).catch(function (err) {
+                console.error(err);
+            });
+    });
+
+exports.cleanDrafts =
+    functions.pubsub.schedule('every 24 hours').onRun((context) => {
+        var db = admin.firestore();
+
+        var date = new Date();
+        let batch = db.batch();
+        var num = 0;
+        console.log("deleting drafts..")
+
+        db.collection("journeylogs").where("draft", "==", true).where("add_time", "<", new Date(date.getFullYear(), date.getMonth(), date.getDay() - 1)).get().then(r => {
+            r.forEach(doc => {
+                batch.delete(doc.ref);
+                num += 1;
+            })
+        })
+        return batch.commit().then(() => {
+            console.log("deleted " + num + " drafts");
+        });
+
+    });
+
 exports.vesselFinderImport = functions.https.onRequest((req, res) => {
     console.log("Getting position")
     var options = {
@@ -138,7 +225,7 @@ exports.generateThumbs = functions.storage
         const bucketDir = path.dirname(filePath);
 
         const workingDir = path.join(os.tmpdir(), 'thumbs');
-        const tmpFilePath = path.join(workingDir, 'source.png');
+        const tmpFilePath = path.join(workingDir, fileName + '.png');
 
         if (fileName.includes('thumb@') || !object.contentType.includes('image')) {
             console.log('exiting function');
@@ -163,6 +250,7 @@ exports.generateThumbs = functions.storage
             // Resize source image
             await sharp(tmpFilePath)
                 .resize(size, size)
+                .jpeg()
                 .toFile(thumbPath);
 
             uuid = UUID();
@@ -171,6 +259,7 @@ exports.generateThumbs = functions.storage
             return bucket.upload(thumbPath, {
                 destination: path.join(bucketDir, thumbName),
                 metadata: {
+                    contentType: 'image/jpeg',
                     metadata: {
                         firebaseStorageDownloadTokens: uuid
                     }
@@ -178,9 +267,9 @@ exports.generateThumbs = functions.storage
             }).then((data) => {
                 var db = admin.firestore();
                 file = data[0];
-                if (size == 60){
+                if (size == 60) {
                     db.collection("photos").doc(fileName).update({ thumburl: "https://firebasestorage.googleapis.com/v0/b/" + bucket.name + "/o/" + encodeURIComponent(file.name) + "?alt=media&token=" + uuid });
-                } else if (size == 256){
+                } else if (size == 256) {
                     db.collection("photos").doc(fileName).update({ thumb256url: "https://firebasestorage.googleapis.com/v0/b/" + bucket.name + "/o/" + encodeURIComponent(file.name) + "?alt=media&token=" + uuid });
                 }
             });
@@ -190,6 +279,8 @@ exports.generateThumbs = functions.storage
         await Promise.all(uploadPromises);
 
         // 5. Cleanup remove the tmp/thumbs from the filesystem
-        return fs.remove(workingDir);
+        return fs.remove(tmpFilePath).then(() => {
+            return fs.remove(workingDir);
+        });
     });
 
