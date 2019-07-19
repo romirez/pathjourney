@@ -10,6 +10,7 @@
         :icon="map.selected == log ? markerSelectedIcon : markerIcon"
         @mouseover="map.selected = log"
         @mousemove="map.selected = log"
+        @mouseout="map.selected = null"
       />
       <gmap-info-window
         v-if="map.selected"
