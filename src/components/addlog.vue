@@ -42,14 +42,17 @@
 <script>
 import Popup from "../components/controls/custom-popup.vue";
 import CustomInput from "../components/controls/custom-input.vue";
-import FileUploader from "../components/controls/fileuploader.vue";
+import FileUploader from "../components/controls/file-uploader.vue";
 import { firestore } from "../firebase";
 import firebase from "firebase/app";
 
 export default {
   name: "AddLog",
   components: { Popup, CustomInput, FileUploader },
-  props: ["title", "coords"],
+  props: {
+    title: String,
+    coords: Object
+  },
   data() {
     return {
       log_time: null,
