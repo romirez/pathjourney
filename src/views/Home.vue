@@ -8,7 +8,7 @@
         <div class="logo">
           <img src="../assets/images/home-logo.png" alt />
         </div>
-        <div class="add-button" @click="showAddLog">
+        <div class="add-button" @click="showAddLog" v-if="user && user.admin">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -23,20 +23,17 @@
           </svg>
         </div>
       </div>
-      <vue-custom-scrollbar
-        class="scroll-area log"
-        :settings="settings"
-        @ps-scroll-y="scrollHandle"
-      >
+      <vue-custom-scrollbar class="scroll-area log" :settings="settings">
         <p>Journey Log</p>
-        <div class="cruises">
+        <div class="cruises" v-for="(month, index) in logHierarchy" :key="index">
           <div class="cruise">
-            <p class="date">June 2019</p>
+            <p class="date" v-if="month.name">{{month.name}}</p>
             <div
-              v-for="log in journeylogs"
-              :key="log.id"
               class="destination"
+              :class="selectedLog == log ? 'selected' : ''"
               @click="selectedLog = log"
+              v-for="log in month.logs"
+              :key="log.id"
             >
               <p
                 class="date"
@@ -56,6 +53,9 @@
                   </div>
                 </div>
               </div>
+              <div class="remove" v-if="user && user.admin" @click.stop="removeLog(log)">
+                <i class="material-icons">delete</i>
+              </div>
             </div>
           </div>
         </div>
@@ -74,11 +74,18 @@
       @submit="addNewLog"
       v-bind:coords="selectedCoords"
     />
-    <loading :active.sync="isLoading" :can-cancel="false" :is-full-page="true"></loading>
+    <loading :active.sync="isLoading" :can-cancel="false" :is-full-page="true" :opacity="1"></loading>
+    <div v-if="permissionError" class="permissionError">
+      You don't have permissions to access this page.
+      <div class="logout">
+        <router-link to="/logout">Logout</router-link>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import firebase from "firebase/app";
 import VueCustomScrollbar from "vue-custom-scrollbar";
 import { firestore } from "../firebase";
 import Loading from "vue-loading-overlay";
@@ -104,25 +111,77 @@ export default {
         maxScrollbarLength: 60
       },
       isAddLogVisible: false,
-      isLoading: false
+      isLoading: false,
+      permissionError: false,
+      user: null
     };
+  },
+  computed: {
+    logHierarchy() {
+      var h = [];
+      var m = null;
+      this.journeylogs
+        .concat()
+        .sort((a, b) => {
+          return a.log_time.toDate() < b.log_time.toDate();
+        })
+        .forEach(log => {
+          var nm =
+            log.log_time.toDate().toLocaleString("default", { month: "long" }) +
+            " " +
+            log.log_time.toDate().getFullYear();
+          if (nm != m) {
+            h.push({
+              name: nm,
+              logs: [log]
+            });
+            m = nm;
+          } else {
+            h[h.length - 1].logs.push(log);
+          }
+        });
+      return h;
+    }
   },
   mounted() {
     this.isLoading = true;
     this.$bind(
       "coordinates",
       firestore.collection("coordinates").orderBy("time", "asc")
-    ).then(
-      this.$bind(
-        "journeylogs",
-        firestore
-          .collection("journeylogs")
-          .where("draft", "==", false)
-          .orderBy("log_time", "desc")
-      ).then(() => {
+    )
+      .then(
+        this.$bind(
+          "journeylogs",
+          firestore
+            .collection("journeylogs")
+            .where("draft", "==", false)
+            .orderBy("log_time", "desc")
+        )
+          .then(() => {
+            this.$bind(
+              "user",
+              firestore.collection("users").doc(firebase.auth().currentUser.uid)
+            )
+              .then(() => {
+                this.isLoading = false;
+              })
+              .catch(e => {
+                console.log(e);
+                this.permissionError = true;
+                this.isLoading = false;
+              });
+          })
+          .catch(e => {
+            console.log(e);
+            this.permissionError = true;
+            this.isLoading = false;
+          })
+      )
+      .catch(e => {
+        console.log(e);
+        this.permissionError = true;
         this.isLoading = false;
-      })
-    );
+      });
   },
   methods: {
     showAddLog(id = null) {
@@ -132,10 +191,9 @@ export default {
     addNewLog(log) {
       console.log("add log " + JSON.stringify(log));
       this.isAddLogVisible = false;
-      this.drawMap();
     },
-    scrollHandle() {
-      console.log("scrolling");
+    removeLog(log) {
+      console.log(log);
     }
   }
 };
@@ -325,9 +383,26 @@ export default {
               margin-left: 1px;
             }
           }
+          & > .remove {
+            font-size: 15px;
+            text-decoration: none;
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+          }
         }
       }
     }
   }
+}
+.permissionError {
+  z-index: 999;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  background-color: #ffffff;
+  padding-top: 100px;
+  text-align: center;
 }
 </style>
