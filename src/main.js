@@ -3,49 +3,43 @@ import App from './App.vue'
 import router from './router'
 import { firestorePlugin } from 'vuefire'
 import * as VueGoogleMaps from 'vue2-google-maps'
+import firebase from 'firebase/app'
+import 'material-design-icons-iconfont/dist/material-design-icons.css'
 
 Vue.config.productionTip = false
-Vue.use(firestorePlugin)
+
+Vue.use(firestorePlugin) //for vuefire
 Vue.use(VueGoogleMaps, {
   load: {
-    key: '***REMOVED***',
-    libraries: 'places', // This is required if you use the Autocomplete plugin
-    // OR: libraries: 'places,drawing'
-    // OR: libraries: 'places,drawing,visualization'
-    // (as you require)
-
-    //// If you want to set the version, you can do so:
-    // v: '3.26',
+    key: '***REMOVED***'
   },
+})
 
-  //// If you intend to programmatically custom event listener code
-  //// (e.g. `this.$refs.gmap.$on('zoom_changed', someFunc)`)
-  //// instead of going through Vue templates (e.g. `<GmapMap @zoom_changed="someFunc">`)
-  //// you might need to turn this on.
-  // autobindAllEvents: false,
-
-  //// If you want to manually install components, e.g.
-  //// import {GmapMarker} from 'vue2-google-maps/src/components/marker'
-  //// Vue.component('GmapMarker', GmapMarker)
-  //// then disable the following:
-  // installComponents: false,
+//in progress
+router.beforeEach((to, from, next) => {
+  if (!to.meta.protected) { //route is public, don't check for authentication
+    next()
+  } else {  //route is protected, if authenticated, proceed. Else, login
+    let unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+      console.log("test1")
+      if (user) {
+        next()
+      } else {
+        console.log("test")
+        router.push('/login')
+        
+      }
+    })
+    unsubscribe()
+  }
 })
 
 new Vue({
   render: h => h(App),
-
   data: function () {
-    return {
-      files: []
-    }
+    return {};
   },
-
-  components: {
-  },
-
+  components: {},
   router,
-
-  methods: {
-   
-  }
+  methods: {}
 }).$mount('#app')

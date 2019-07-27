@@ -1,42 +1,46 @@
 <template>
   <div class="map">
     <GmapMap :center="map.center" :zoom="7" style="width: 100%; height: 100%" ref="mapRef">
+      <!-- all log markers -->
       <GmapMarker
         v-for="log in logsWithCoordinates"
         :key="log.id"
         :position="{ lat: log['coordinates'].location._lat, lng: log['coordinates'].location._long}"
         :clickable="true"
         :draggable="false"
-        :icon="map.selected == log ? markerSelectedIcon : markerIcon"
-        @mouseover="map.selected = log"
-        @mousemove="map.selected = log"
-        @mouseout="map.selected = null"
+        :icon="map.loghover == log ? markerSelectedIcon : markerIcon"
+        @mouseover="map.loghover = log"
+        @mousemove="map.loghover = log"
+        @mouseout="map.loghover = null"
+        @click="selectedLog = log"
       />
+      <!-- info window on log hover -->
       <gmap-info-window
-        v-if="map.selected"
+        v-if="infoWindowLog"
         :options="{pixelOffset: {width: 0,height: -10}}"
         :position="selectedLogCoords"
-        @closeclick="map.selected = null"
+        @closeclick="selectedLog = null"
       >
         <div class="destination balloon">
           <p
             class="date"
-          >{{map.selected.log_time.toDate().getDate()}}.{{map.selected.log_time.toDate().getMonth() + 1}}.{{map.selected.log_time.toDate().getFullYear()}}</p>
-          <p class="name">{{map.selected.name}}</p>
-          <p class="description" v-if="map.selected.notes">{{map.selected.notes}}</p>
-          <div class="images" v-if="map.selected.photos">
-            <div v-for="photo in map.selected.photos.slice(0, 5)" :key="photo.id">
+          >{{infoWindowLog.log_time.toDate().getDate()}}.{{infoWindowLog.log_time.toDate().getMonth() + 1}}.{{infoWindowLog.log_time.toDate().getFullYear()}}</p>
+          <p class="name">{{infoWindowLog.name}}</p>
+          <p class="description" v-if="infoWindowLog.notes">{{infoWindowLog.notes}}</p>
+          <div class="images" v-if="infoWindowLog.photos">
+            <div v-for="photo in infoWindowLog.photos.slice(0, 5)" :key="photo.id">
               <img :src="photo.thumburl" alt />
             </div>
-            <div v-if="map.selected.photos.length > 5">
-              <img :src="map.selected.photos[5].id + '_thumb.jpg'" alt/>
-              <div v-if="map.selected.photos.length > 6" class="overlay">
-                <span>+{{map.selected.photos.length - 5}}</span>
+            <div v-if="infoWindowLog.photos.length > 5">
+              <img :src="infoWindowLog.photos[5].id + '_thumb.jpg'" alt />
+              <div v-if="infoWindowLog.photos.length > 6" class="overlay">
+                <span>+{{infoWindowLog.photos.length - 5}}</span>
               </div>
             </div>
           </div>
         </div>
       </gmap-info-window>
+      <!-- poly paths -->
       <div v-for="(path, index) in polypath" :key="index">
         <gmap-polyline
           :path="path.coordinates"
@@ -54,15 +58,17 @@
           @mousemove="polyMouseMove(path, $event)"
         />
       </div>
+      <!-- marker for poly point hover -->
       <GmapMarker
-        v-if="map.linehover && !map.selected"
+        v-if="map.linehover && !map.loghover"
         :position="map.linehover"
         :clickable="false"
         :draggable="false"
         :icon="markerIcon"
       />
+      <!-- info window on poly point hover -->
       <gmap-info-window
-        v-if="map.linehover && !map.selected"
+        v-if="map.linehover && !map.loghover"
         :options="{pixelOffset: {width: 0,height: -10}}"
         :position="map.linehover"
         @closeclick="map.linehover = null"
@@ -73,6 +79,7 @@
         </div>
       </gmap-info-window>
     </GmapMap>
+    <ViewLog v-if="selectedLog" :log="selectedLog" />
   </div>
 </template>
 <script>
@@ -81,19 +88,22 @@ import image_marker from "../assets/images/marker.png";
 import image_marker_selected from "../assets/images/marker-selected.png";
 import moment from "moment";
 import { getClosestPointOnLines } from "../snaptoroute.js";
+import ViewLog from "../components/ViewLog.vue";
 
 export default {
   name: "TheMap",
+  components: { ViewLog },
   props: {
     coordinates: Array,
     journeylogs: Array,
-    segments: Array
+    segments: Array,
+    selectedLog: Object
   },
   data() {
     return {
       map: {
         center: { lat: 42.36197, lng: 8.773408 },
-        selected: null,
+        loghover: null,
         linehover: null,
         infoWindowPos: null
       },
@@ -109,6 +119,9 @@ export default {
   },
   computed: {
     google: VueGoogleMaps.gmapApi,
+    infoWindowLog() {
+      return this.selectedLog ? this.selectedLog : this.map.loghover;
+    },
     logsWithCoordinates() {
       return this.journeylogs.filter(log => {
         return log["coordinates"].location;
@@ -190,8 +203,8 @@ export default {
     },
     selectedLogCoords() {
       return new this.google.maps.LatLng(
-        this.map.selected["coordinates"]["location"].latitude,
-        this.map.selected["coordinates"]["location"].longitude
+        this.infoWindowLog["coordinates"]["location"].latitude,
+        this.infoWindowLog["coordinates"]["location"].longitude
       );
     }
   },
@@ -228,7 +241,7 @@ export default {
       this.isAddLogVisible = true;
     },
     polyMouseMove(path, e) {
-      if (this.map.selected == null)
+      if (this.map.loghover == null)
         this.map.linehover = this.closestPoint(path, e);
     }
   }

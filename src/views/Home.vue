@@ -1,6 +1,9 @@
 <template>
   <div class="home">
     <div class="journey-log">
+      <div class="logout">
+        <router-link to="/logout">Logout</router-link>
+      </div>
       <div class="header">
         <div class="logo">
           <img src="../assets/images/home-logo.png" alt />
@@ -29,7 +32,12 @@
         <div class="cruises">
           <div class="cruise">
             <p class="date">June 2019</p>
-            <div v-for="log in journeylogs" :key="log.id" class="destination">
+            <div
+              v-for="log in journeylogs"
+              :key="log.id"
+              class="destination"
+              @click="selectedLog = log"
+            >
               <p
                 class="date"
               >{{log.log_time.toDate().getDate()}}.{{log.log_time.toDate().getMonth() + 1}}.{{log.log_time.toDate().getFullYear()}}</p>
@@ -57,6 +65,7 @@
       v-bind:coordinates="coordinates"
       v-bind:journeylogs="journeylogs"
       v-bind:segments="segments"
+      v-bind:selectedLog="selectedLog"
       @addLog="showAddLog"
     />
     <AddLog
@@ -90,6 +99,7 @@ export default {
       coordinates: [],
       journeylogs: [],
       segments: [],
+      selectedLog: null,
       settings: {
         maxScrollbarLength: 60
       },
@@ -168,6 +178,20 @@ export default {
       }
     }
   }
+
+  & > .logout {
+    position: relative;
+
+    & > a {
+      color: #31b9f1;
+      font-size: 15px;
+      text-decoration: none;
+      position: absolute;
+      right: 10px;
+      padding: 5px;
+    }
+  }
+
   & > .log {
     height: 100%;
     overflow-y: scroll;
