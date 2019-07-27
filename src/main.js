@@ -5,6 +5,7 @@ import { firestorePlugin } from 'vuefire'
 import * as VueGoogleMaps from 'vue2-google-maps'
 import firebase from 'firebase/app'
 import 'material-design-icons-iconfont/dist/material-design-icons.css'
+import "../firebase";
 
 Vue.config.productionTip = false
 
@@ -15,25 +16,6 @@ Vue.use(VueGoogleMaps, {
   },
 })
 
-//in progress
-router.beforeEach((to, from, next) => {
-  if (!to.meta.protected) { //route is public, don't check for authentication
-    next()
-  } else {  //route is protected, if authenticated, proceed. Else, login
-    let unsubscribe = firebase.auth().onAuthStateChanged((user) => {
-      console.log("test1")
-      if (user) {
-        next()
-      } else {
-        console.log("test")
-        router.push('/login')
-        
-      }
-    })
-    unsubscribe()
-  }
-})
-
 new Vue({
   render: h => h(App),
   data: function () {
@@ -41,5 +23,14 @@ new Vue({
   },
   components: {},
   router,
-  methods: {}
+  methods: {},
+  created() {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        this.$router.push('/')
+      } else {
+        this.$router.push('/login')
+      }
+    });
+  }
 }).$mount('#app')

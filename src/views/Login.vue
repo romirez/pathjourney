@@ -4,15 +4,16 @@
       <div class="logo">
         <img src="../assets/images/logo-login.png" alt />
       </div>
-      <div class="inputs">
+      <div class="firebaseui-container" id="firebaseui-auth-container"></div>
+      <!--div class="inputs">
         <div class="text-input">
           <custom-input v-model="password" :placeholder="'Enter password'" :type="'password'"></custom-input>
         </div>
         <div class="submit-button">
           <input type="button" value="Submit" v-on:click="login()" />
         </div>
-        <div id="firebaseui-auth-container"></div>
-      </div>
+        
+      </div-->
     </div>
   </div>
 </template>
@@ -23,9 +24,9 @@ import * as firebaseui from "firebaseui";
 import 'firebase/auth';
 import "../../node_modules/firebaseui/dist/firebaseui.css";
 
-import CustomInput from "../components/controls/custom-input.vue";
+//import CustomInput from "../components/controls/custom-input.vue";
 export default {
-  components: { CustomInput },
+  //components: { CustomInput },
   name: "Login",
   data() {
     return {
@@ -34,7 +35,7 @@ export default {
   },
   mounted() {
     let uiConfig = {
-      signInOptions: [firebase.auth.GoogleAuthProvider.PROVIDER_ID],
+      signInOptions: [firebase.auth.GoogleAuthProvider.PROVIDER_ID, firebase.auth.EmailAuthProvider.PROVIDER_ID],
       callbacks: {
         signInSuccessWithAuthResult() {
           localStorage.setItem("authenticated", true);
@@ -85,6 +86,9 @@ export default {
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
   }
+}
+.firebaseui-container {
+  padding: 50px;
 }
 .inputs {
   padding: 58px;
