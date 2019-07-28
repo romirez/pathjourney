@@ -1,29 +1,33 @@
 <template>
   <div class="text-input">
-    <input
-      class="password-input"
-      :type="type"
+    <datepicker
+      input-class="date-input"
       :value="value"
-      @focus="toggle_line && value !== '' ? '' : toggle_line = !toggle_line"
-      @blur="toggle_line && value === '' ? toggle_line = !toggle_line : ''"
-      @input="$emit('input', $event.target.value)"
-    />
+      @input="dateSet"
+    ></datepicker>
     <div class="label" :class="(toggle_line ? 'floated' : '')">{{placeholder}}</div>
     <div class="border-line" :class="toggle_line ? 'full' : 'zero'"></div>
   </div>
 </template>
 <script>
+import Datepicker from "vuejs-datepicker";
+
 export default {
-  name: "custom-input",
-  data() {
-    return {
-      toggle_line: false
-    };
-  },
+  name: "custom-datepicker",
+  components: { Datepicker },
   props: {
-    value: String,
-    placeholder: String,
-    type: String
+    value: Date,
+    placeholder: String
+  },
+  methods: {
+      dateSet(date) {
+        this.$emit('input', date); 
+      }
+  },
+  computed: {
+    toggle_line() {
+      return this.value != null;
+    }
   }
 };
 </script>
@@ -46,15 +50,6 @@ export default {
       color: #31b9f1;
     }
   }
-  & > .password-input {
-    width: 100%;
-    border: none;
-    padding-bottom: 10px;
-    outline: none;
-    position: relative;
-    background-color: rgba(220, 220, 220, 0);
-    z-index: 3;
-  }
   & > .border-line {
     width: 100%;
     height: 2px;
@@ -67,5 +62,14 @@ export default {
       background-color: #c1c1c1;
     }
   }
+}
+.date-input {
+  width: 100%;
+  border: none;
+  padding-bottom: 10px;
+  outline: none;
+  position: relative;
+  background-color: rgba(220, 220, 220, 0);
+  z-index: 3;
 }
 </style>

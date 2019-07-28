@@ -64,8 +64,10 @@ export default {
     margin-top: 20px;
     & > * {
       flex: 1;
-      min-width: 120px;
+      min-width: 238px;
       max-width: 238px;
+      min-height: 238px;
+      max-height: 238px;
       & > img {
         width: 100%;
         height: auto;

@@ -1,32 +1,32 @@
 <template>
   <div class="login">
-        <div class="login-form">
+    <div class="login-form">
       <div class="logo">
         <img src="../assets/images/logo-login.png" alt />
       </div>
-      <div class="firebaseui-container" id="firebaseui-auth-container"></div>
-      <!--div class="inputs">
+      <div class="inputs">
         <div class="text-input">
           <custom-input v-model="password" :placeholder="'Enter password'" :type="'password'"></custom-input>
         </div>
         <div class="submit-button">
           <input type="button" value="Submit" v-on:click="login()" />
         </div>
-        
-      </div-->
+      </div>
+      <div class="firebaseui-container" id="firebaseui-auth-container"></div>
     </div>
+    <v-dialog />
   </div>
 </template>
 
 <script>
 import firebase from "firebase/app";
 import * as firebaseui from "firebaseui";
-import 'firebase/auth';
+import "firebase/auth";
 import "../../node_modules/firebaseui/dist/firebaseui.css";
 
-//import CustomInput from "../components/controls/custom-input.vue";
+import CustomInput from "../components/controls/custom-input.vue";
 export default {
-  //components: { CustomInput },
+  components: { CustomInput },
   name: "Login",
   data() {
     return {
@@ -35,7 +35,7 @@ export default {
   },
   mounted() {
     let uiConfig = {
-      signInOptions: [firebase.auth.GoogleAuthProvider.PROVIDER_ID, firebase.auth.EmailAuthProvider.PROVIDER_ID],
+      signInOptions: [firebase.auth.GoogleAuthProvider.PROVIDER_ID],
       callbacks: {
         signInSuccessWithAuthResult() {
           localStorage.setItem("authenticated", true);
@@ -52,15 +52,22 @@ export default {
   methods: {
     login() {
       if (this.password != "") {
-        if (this.password == "test") {
-          localStorage.setItem('authenticated', false)
-          this.$emit("authenticated", true);
-          this.$router.replace({ name: "home" });
-        } else {
-          console.log("The username and / or password is incorrect");
-        }
-      } else {
-        console.log("A username and password must be present");
+        firebase
+          .auth()
+          .signInWithEmailAndPassword("user@sypath.com", this.password)
+          .catch(error => {
+            var errorMessage = error.message;
+            console.log(errorMessage);
+            this.$modal.show("dialog", {
+              title: "Unable to login: " + errorMessage,
+              buttons: [
+                {
+                  title: "OK",
+                  default: true
+                }
+              ]
+            });
+          });
       }
     }
   }
@@ -88,10 +95,10 @@ export default {
   }
 }
 .firebaseui-container {
-  padding: 50px;
+  padding: 10px 20px 20px 20px;
 }
 .inputs {
-  padding: 58px;
+  padding: 58px 58px 10px 58px;
   display: flex;
   flex-flow: column nowrap;
   align-items: center;

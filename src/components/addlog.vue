@@ -3,9 +3,9 @@
     <template v-slot:content>
       <div class="destination-info">
         <div class="text-inputs">
-          <custom-input class="info-input" v-model="log_time" :placeholder="'Date'" :type="'date'"></custom-input>
-          <custom-input class="info-input" v-model="name" :placeholder="'Name'" :type="'text'"></custom-input>
-          <custom-input class="info-input" v-model="notes" :placeholder="'Notes'" :type="'text'"></custom-input>
+          <custom-datepicker class="info-input" v-model="log_time" :placeholder="'Date'"></custom-datepicker>
+          <custom-input class="info-input" v-model="name" :placeholder="'Name'"></custom-input>
+          <custom-input class="info-input" v-model="notes" :placeholder="'Notes'"></custom-input>
         </div>
         <div class="upload-images">
           <div class="title">Add photo</div>
@@ -36,22 +36,25 @@
           <input type="button" value="Submit" @click="submit" />
         </div>
       </div>
+      <loading :active.sync="isLoading" :can-cancel="false" :is-full-page="true" :opacity="1"></loading>
     </template>
   </popup>
 </template>
 <script>
 import Popup from "../components/controls/custom-popup.vue";
 import CustomInput from "../components/controls/custom-input.vue";
+import CustomDatepicker from "../components/controls/custom-datepicker.vue";
 import FileUploader from "../components/controls/file-uploader.vue";
+import Loading from "vue-loading-overlay";
 import { firestore } from "../firebase";
 import firebase from "firebase/app";
 
 export default {
   name: "AddLog",
-  components: { Popup, CustomInput, FileUploader },
+  components: { Popup, CustomInput, CustomDatepicker, FileUploader, Loading },
   props: {
     title: String,
-    coords: Object
+    coords: String
   },
   data() {
     return {
@@ -60,6 +63,7 @@ export default {
       name: "",
       id: null,
       coordinates: null,
+      isLoading: false,
 
       log: {
         log_time: null,
@@ -73,23 +77,36 @@ export default {
     };
   },
   mounted() {
+    this.isLoading = true;
     if (this.coords) {
       firestore
         .collection("coordinates")
-        .doc(this.coords).get()
+        .doc(this.coords)
+        .get()
         .then(doc => {
           this.coordinates = doc.ref;
           this.log_time = doc.data()["time"].toDate();
+          firestore
+            .collection("journeylogs")
+            .add(this.log)
+            .then(nl => {
+              console.log("created draft " + nl.id);
+              this.id = nl.id;
+              this.$bind("log", firestore.collection("journeylogs").doc(nl.id));
+              this.isLoading = false;
+            });
+        });
+    } else {
+      firestore
+        .collection("journeylogs")
+        .add(this.log)
+        .then(nl => {
+          console.log("created draft " + nl.id);
+          this.id = nl.id;
+          this.$bind("log", firestore.collection("journeylogs").doc(nl.id));
+          this.isLoading = false;
         });
     }
-    firestore
-      .collection("journeylogs")
-      .add(this.log)
-      .then(nl => {
-        console.log("created draft " + nl.id);
-        this.id = nl.id;
-        this.$bind("log", firestore.collection("journeylogs").doc(nl.id));
-      });
   },
   destroyed() {
     if (this.log && this.log.draft == true) {
@@ -102,21 +119,43 @@ export default {
   },
   methods: {
     submit() {
-      firestore
-        .collection("coordinates")
-        .where("time", ">", this.log_time)
-        .orderBy("time", "asc")
-        .limit(1)
-        .get()
-        .then(res1 => {
-          if (res1.docs.length == 0) {
-            firestore
-              .collection("coordinates")
-              .where("time", "<", this.log_time)
-              .orderBy("time", "desc")
-              .limit(1)
-              .get()
-              .then(res2 => {
+      if (!this.name || this.name == "") {
+        console.log("name");
+      } else if (!this.log_time) {
+        console.log("logtime");
+      } else {
+        if (this.coords == null) {
+          firestore
+            .collection("coordinates")
+            .where("time", ">", this.log_time)
+            .orderBy("time", "asc")
+            .limit(1)
+            .get()
+            .then(res1 => {
+              if (res1.docs.length == 0) {
+                firestore
+                  .collection("coordinates")
+                  .where("time", "<", this.log_time)
+                  .orderBy("time", "desc")
+                  .limit(1)
+                  .get()
+                  .then(res2 => {
+                    firestore
+                      .collection("journeylogs")
+                      .doc(this.log.id)
+                      .update({
+                        name: this.name,
+                        log_time: this.log_time,
+                        notes: this.notes,
+                        add_time: new Date(),
+                        coordinates: res2.docs[0].ref,
+                        draft: false
+                      })
+                      .then(() => {
+                        this.$emit("submit", this.log);
+                      });
+                  });
+              } else {
                 firestore
                   .collection("journeylogs")
                   .doc(this.log.id)
@@ -125,28 +164,37 @@ export default {
                     log_time: this.log_time,
                     notes: this.notes,
                     add_time: new Date(),
-                    coordinates: res2.docs[0].ref,
+                    coordinates: res1.docs[0].ref,
                     draft: false
                   })
-                  .then(doc => {
-                    this.$emit("submit", doc.data());
+                  .then(() => {
+                    this.$emit("submit", this.log);
                   });
-              });
-          } else {
-            firestore
-              .collection("journeylogs")
-              .doc(this.log.id)
-              .update({
-                name: this.name,
-                log_time: this.log_time,
-                notes: this.notes,
-                add_time: new Date(),
-                coordinates: res1.docs[0].ref,
-                draft: false
-              });
-            this.$emit("submit", this.log);
-          }
-        });
+              }
+            });
+        } else {
+          firestore
+            .collection("coordinates")
+            .doc(this.coords)
+            .get()
+            .then(c => {
+              firestore
+                .collection("journeylogs")
+                .doc(this.log.id)
+                .update({
+                  name: this.name,
+                  log_time: this.log_time,
+                  notes: this.notes,
+                  add_time: new Date(),
+                  coordinates: c.ref,
+                  draft: false
+                })
+                .then(() => {
+                  this.$emit("submit", this.log);
+                });
+            });
+        }
+      }
     },
     async addPhoto(id) {
       firestore

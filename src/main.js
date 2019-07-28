@@ -6,15 +6,17 @@ import * as VueGoogleMaps from 'vue2-google-maps'
 import firebase from 'firebase/app'
 import 'material-design-icons-iconfont/dist/material-design-icons.css'
 import "../firebase";
+import VModal from 'vue-js-modal'
 
-Vue.config.productionTip = false
+Vue.config.productionTip = false;
 
-Vue.use(firestorePlugin) //for vuefire
+Vue.use(firestorePlugin); //for vuefire
 Vue.use(VueGoogleMaps, {
   load: {
     key: '***REMOVED***'
   },
-})
+});
+Vue.use(VModal, { dialog: true });
 
 new Vue({
   render: h => h(App),

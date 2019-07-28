@@ -8,7 +8,7 @@
         <div class="logo">
           <img src="../assets/images/home-logo.png" alt />
         </div>
-        <div class="add-button" @click="showAddLog" v-if="user && user.admin">
+        <div class="add-button" @click="showAddLog(null)" v-if="user && user.admin">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -61,15 +61,18 @@
         </div>
       </vue-custom-scrollbar>
     </div>
+    <v-dialog />
     <TheMap
+      v-if="!isLoading"
       v-bind:coordinates="coordinates"
       v-bind:journeylogs="journeylogs"
       v-bind:segments="segments"
       v-bind:selectedLog="selectedLog"
       @addLog="showAddLog"
+      @selectedLog="selectLog"
     />
     <AddLog
-      v-if="isAddLogVisible"
+      v-if="isAddLogVisible && user && user.admin"
       @close="isAddLogVisible = false;"
       @submit="addNewLog"
       v-bind:coords="selectedCoords"
@@ -107,6 +110,7 @@ export default {
       journeylogs: [],
       segments: [],
       selectedLog: null,
+      selectedCoords: null,
       settings: {
         maxScrollbarLength: 60
       },
@@ -184,9 +188,12 @@ export default {
       });
   },
   methods: {
-    showAddLog(id = null) {
+    showAddLog(id) {
       this.selectedCoords = id;
       this.isAddLogVisible = true;
+    },
+    selectLog(log) {
+      this.selectedLog = log;
     },
     addNewLog(log) {
       console.log("add log " + JSON.stringify(log));
@@ -194,6 +201,28 @@ export default {
     },
     removeLog(log) {
       console.log(log);
+      this.$modal.show("dialog", {
+        title: "Are you sure you want to remove this log?",
+        buttons: [
+          {
+            title: "Remove",
+            handler: () => {
+              if (this.selectLog.id == log.id) {
+                this.selectedLog = null;
+              }
+              firestore
+                .collection("journeylogs")
+                .doc(log.id)
+                .delete();
+              this.$modal.hide("dialog");
+            }
+          },
+          {
+            title: "Cancel",
+            default: true
+          }
+        ]
+      });
     }
   }
 };

@@ -1,6 +1,6 @@
 <template>
   <div class="map">
-    <GmapMap :center="map.center" :zoom="7" style="width: 100%; height: 100%" ref="mapRef">
+    <GmapMap :center="center" :zoom="7" style="width: 100%; height: 100%" ref="mapRef">
       <!-- all log markers -->
       <GmapMarker
         v-for="log in logsWithCoordinates"
@@ -8,18 +8,18 @@
         :position="{ lat: log['coordinates'].location._lat, lng: log['coordinates'].location._long}"
         :clickable="true"
         :draggable="false"
-        :icon="map.loghover == log ? markerSelectedIcon : markerIcon"
-        @mouseover="map.loghover = log"
-        @mousemove="map.loghover = log"
-        @mouseout="map.loghover = null"
-        @click="selectedLog = log"
+        :icon="loghover == log ? markerSelectedIcon : markerIcon"
+        @mouseover="loghover = log"
+        @mousemove="loghover = log"
+        @mouseout="loghover = null"
+        @click="$emit('selectedLog', log)"
       />
       <!-- info window on log hover -->
       <gmap-info-window
         v-if="infoWindowLog"
         :options="{pixelOffset: {width: 0,height: -10}}"
         :position="selectedLogCoords"
-        @closeclick="selectedLog = null"
+        @closeclick="$emit('selectedLog', null)"
       >
         <div class="destination balloon">
           <p
@@ -54,28 +54,35 @@
           :draggable="false"
           :options="{geodesic:true, strokeColor:path.color, strokeOpacity: 0.1, strokeWeight: 40}"
           @click="pathClick(path, $event)"
-          @mouseout="map.linehover = null"
+          @mouseout="linehover = null"
           @mousemove="polyMouseMove(path, $event)"
         />
       </div>
+      <!-- marker for last location -->
+      <GmapMarker
+        :position="center"
+        :clickable="false"
+        :draggable="false"
+        :icon="pathMarkerIcon"
+      />
       <!-- marker for poly point hover -->
       <GmapMarker
-        v-if="map.linehover && !map.loghover"
-        :position="map.linehover"
+        v-if="linehover && !loghover"
+        :position="linehover"
         :clickable="false"
         :draggable="false"
         :icon="markerIcon"
       />
       <!-- info window on poly point hover -->
       <gmap-info-window
-        v-if="map.linehover && !map.loghover"
+        v-if="linehover && !loghover"
         :options="{pixelOffset: {width: 0,height: -10}}"
-        :position="map.linehover"
-        @closeclick="map.linehover = null"
+        :position="linehover"
+        @closeclick="linehover = null"
       >
-        <div v-if="map.linehover">
-          <p>{{map.linehover.time | formatDate}}</p>
-          <p>Source: {{map.linehover.source}}</p>
+        <div v-if="linehover">
+          <p>{{linehover.time | formatDate}}</p>
+          <p>Source: {{linehover.source}}</p>
         </div>
       </gmap-info-window>
     </GmapMap>
@@ -86,6 +93,7 @@
 import * as VueGoogleMaps from "vue2-google-maps";
 import image_marker from "../assets/images/marker.png";
 import image_marker_selected from "../assets/images/marker-selected.png";
+import image_path_marker from "../assets/images/pathmarker.png";
 import moment from "moment";
 import { getClosestPointOnLines } from "../snaptoroute.js";
 import ViewLog from "../components/ViewLog.vue";
@@ -101,12 +109,9 @@ export default {
   },
   data() {
     return {
-      map: {
-        center: { lat: 42.36197, lng: 8.773408 },
-        loghover: null,
-        linehover: null,
-        infoWindowPos: null
-      },
+      loghover: null,
+      linehover: null,
+      infoWindowPos: null,
       map_ref: null
     };
   },
@@ -119,8 +124,12 @@ export default {
   },
   computed: {
     google: VueGoogleMaps.gmapApi,
+    center() {
+      if (!this.coordinates || this.coordinates.length == 0) return { lat: 42.36197, lng: 8.773408 };
+      return { lat: this.coordinates[this.coordinates.length-1]["location"].latitude, lng: this.coordinates[this.coordinates.length-1]["location"].longitude };
+    },
     infoWindowLog() {
-      return this.selectedLog ? this.selectedLog : this.map.loghover;
+      return this.selectedLog ? this.selectedLog : this.loghover;
     },
     logsWithCoordinates() {
       return this.journeylogs.filter(log => {
@@ -133,6 +142,14 @@ export default {
         origin: new this.google.maps.Point(0, 0),
         anchor: new this.google.maps.Point(6, 6),
         size: new this.google.maps.Size(12, 12)
+      };
+    },
+    pathMarkerIcon() {
+      return {
+        url: image_path_marker,
+        origin: new this.google.maps.Point(0, 0),
+        anchor: new this.google.maps.Point(8, 7),
+        size: new this.google.maps.Size(16, 14)
       };
     },
     markerSelectedIcon() {
@@ -241,8 +258,7 @@ export default {
       this.isAddLogVisible = true;
     },
     polyMouseMove(path, e) {
-      if (this.map.loghover == null)
-        this.map.linehover = this.closestPoint(path, e);
+      if (this.loghover == null) this.linehover = this.closestPoint(path, e);
     }
   }
 };
