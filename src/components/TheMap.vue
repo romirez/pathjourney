@@ -60,6 +60,7 @@
       </div>
       <!-- marker for last location -->
       <GmapMarker
+        v-if="map_ref"
         :position="center"
         :clickable="false"
         :draggable="false"

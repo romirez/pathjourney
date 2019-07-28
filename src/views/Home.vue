@@ -63,7 +63,6 @@
     </div>
     <v-dialog />
     <TheMap
-      v-if="!isLoading"
       v-bind:coordinates="coordinates"
       v-bind:journeylogs="journeylogs"
       v-bind:segments="segments"
