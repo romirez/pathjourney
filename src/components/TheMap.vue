@@ -113,7 +113,8 @@ export default {
       loghover: null,
       linehover: null,
       infoWindowPos: null,
-      map_ref: null
+      map_ref: null,
+      pathMarkerImg: null
     };
   },
   filters: {
@@ -126,8 +127,12 @@ export default {
   computed: {
     google: VueGoogleMaps.gmapApi,
     center() {
-      if (!this.coordinates || this.coordinates.length == 0) return { lat: 42.36197, lng: 8.773408 };
-      return { lat: this.coordinates[this.coordinates.length-1]["location"].latitude, lng: this.coordinates[this.coordinates.length-1]["location"].longitude };
+      if (!this.coordinates || this.coordinates.length == 0)
+        return { lat: 42.36197, lng: 8.773408 };
+      return {
+        lat: this.coordinates[this.coordinates.length - 1]["location"].latitude,
+        lng: this.coordinates[this.coordinates.length - 1]["location"].longitude
+      };
     },
     infoWindowLog() {
       return this.selectedLog ? this.selectedLog : this.loghover;
@@ -146,11 +151,33 @@ export default {
       };
     },
     pathMarkerIcon() {
+      var canv = document.createElement("canvas");
+      canv.width = 16;
+      canv.height = 16;
+
+      var p1 = new this.google.maps.LatLng(
+        this.coordinates[this.coordinates.length - 2]["location"].latitude,
+        this.coordinates[this.coordinates.length - 2]["location"].longitude
+      );
+      var p2 = new this.google.maps.LatLng(
+        this.coordinates[this.coordinates.length - 1]["location"].latitude,
+        this.coordinates[this.coordinates.length - 1]["location"].longitude
+      );
+
+      var heading = this.google.maps.geometry.spherical.computeHeading(p1, p2);
+
+      var ctx = canv.getContext("2d");
+      ctx.save();
+      ctx.translate(8, 8);
+      ctx.rotate((heading * Math.PI) / 180);
+      ctx.drawImage(this.pathMarkerImg, -8, -8);
+      ctx.restore();
+
       return {
-        url: image_path_marker,
+        url: canv.toDataURL(),
         origin: new this.google.maps.Point(0, 0),
-        anchor: new this.google.maps.Point(8, 7),
-        size: new this.google.maps.Size(16, 14)
+        anchor: new this.google.maps.Point(8, 8),
+        size: new this.google.maps.Size(16, 16)
       };
     },
     markerSelectedIcon() {
@@ -230,6 +257,8 @@ export default {
     this.$refs.mapRef.$mapPromise.then(map => {
       this.map_ref = map;
     });
+    this.pathMarkerImg = new Image();
+    this.pathMarkerImg.src = image_path_marker;
   },
   methods: {
     closestPoint(path, e) {

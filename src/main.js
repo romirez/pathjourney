@@ -13,7 +13,7 @@ Vue.config.productionTip = false;
 Vue.use(firestorePlugin); //for vuefire
 Vue.use(VueGoogleMaps, {
   load: {
-    key: '***REMOVED***'
+    libraries: 'geometry', key: '***REMOVED***'
   },
 });
 Vue.use(VModal, { dialog: true });

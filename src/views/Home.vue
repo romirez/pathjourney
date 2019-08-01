@@ -1,14 +1,31 @@
 <template>
   <div class="home">
     <div class="journey-log">
-      <div class="logout">
-        <router-link to="/logout">Logout</router-link>
-      </div>
+      <div class="logout"></div>
+      <v-menu offset-y>
+        <template v-slot:activator="{ on }">
+          <v-btn color="primary" dark v-on="on">Dropdown</v-btn>
+        </template>
+        <v-list>
+          <v-list-item>
+            <v-list-item-title>
+              <router-link to="/logout">
+                <i class="material-icons" title="Logout">logout</i>
+              </router-link>
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
       <div class="header">
         <div class="logo">
           <img src="../assets/images/home-logo.png" alt />
         </div>
-        <div class="add-button" @click="showAddLog(null)" v-if="user && user.admin">
+        <div
+          class="add-button"
+          @click="showAddLog(null)"
+          v-if="user && user.admin"
+          title="Add new log"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -63,6 +80,7 @@
     </div>
     <v-dialog />
     <TheMap
+      v-if="!isLoading"
       v-bind:coordinates="coordinates"
       v-bind:journeylogs="journeylogs"
       v-bind:segments="segments"
@@ -94,6 +112,7 @@ import Loading from "vue-loading-overlay";
 import "vue-loading-overlay/dist/vue-loading.css";
 import AddLog from "../components/AddLog.vue";
 import TheMap from "../components/TheMap.vue";
+
 
 export default {
   name: "Home",
@@ -370,6 +389,9 @@ export default {
             color: #282828;
             font-weight: bold;
             margin-top: 8px;
+          }
+          & > .remove {
+            color: #a7a7a7;
           }
           & > .images {
             display: flex;
