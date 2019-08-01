@@ -6,5 +6,12 @@ module.exports = {
     plugins: [
       new VuetifyLoaderPlugin()
     ],
+  },
+  css: {
+    loaderOptions: {
+      sass: {
+        implementation: require('sass'), // This line must in sass option
+      },
+    },
   }
 }
