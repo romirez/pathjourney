@@ -1,24 +1,27 @@
 <template>
   <div class="home">
     <div class="journey-log">
-      <div class="logout"></div>
-      <v-menu offset-y>
-        <template v-slot:activator="{ on }">
-          <v-btn color="primary" dark v-on="on">Dropdown</v-btn>
-        </template>
-        <v-list>
-          <v-list-item>
-            <v-list-item-title>
-              <router-link to="/logout">
-                <i class="material-icons" title="Logout">logout</i>
-              </router-link>
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
       <div class="header">
         <div class="logo">
           <img src="../assets/images/home-logo.png" alt />
+        </div>
+        <div class="menu">
+        <v-menu :offset-x="offsetX">
+          <template v-slot:activator="{ on }">
+            <v-btn icon v-on="on">
+              <i class="material-icons" title="Menu">more_horiz</i>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item>
+              <v-list-item-title>
+                <router-link to="/logout">
+                  <i class="material-icons" title="Logout">logout</i> Logout
+                </router-link>
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
         </div>
         <div
           class="add-button"
@@ -112,7 +115,6 @@ import Loading from "vue-loading-overlay";
 import "vue-loading-overlay/dist/vue-loading.css";
 import AddLog from "../components/AddLog.vue";
 import TheMap from "../components/TheMap.vue";
-
 
 export default {
   name: "Home",
@@ -287,7 +289,7 @@ export default {
   & > .logout {
     position: relative;
 
-    & > a {
+    & > .menu {
       color: #31b9f1;
       font-size: 15px;
       text-decoration: none;
