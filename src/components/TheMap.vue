@@ -218,7 +218,7 @@ export default {
       });
 
       segments.push({
-        color: "#F9B55A",
+        color: "#DCBF85",
         stroke: 4,
         opacity: 1,
         coordinates: getSegment(
@@ -231,8 +231,17 @@ export default {
         )
       });
 
+      //add last point to next segment to have unbroken path
+      if (
+        segments[0].coordinates.length > 0 &&
+        segments[1].coordinates.length > 0
+      )
+        segments[1].coordinates.push(
+          segments[0].coordinates[0]
+        );
+
       segments.push({
-        color: "#E0CB91",
+        color: "#C6C1AB",
         stroke: 4,
         opacity: 1,
         coordinates: getSegment(
@@ -243,6 +252,15 @@ export default {
           )
         )
       });
+
+      //add last point to next segment to have unbroken path
+      if (
+        segments[2].coordinates.length > 0 &&
+        segments[1].coordinates.length > 0
+      )
+        segments[2].coordinates.push(
+          segments[1].coordinates[0]
+        );
 
       return segments;
     },
