@@ -6,45 +6,47 @@
           <img src="../assets/images/home-logo.png" alt />
         </div>
         <div class="menu">
-        <v-menu :offset-x="offsetX">
-          <template v-slot:activator="{ on }">
-            <v-btn icon v-on="on">
-              <i class="material-icons" title="Menu">more_horiz</i>
-            </v-btn>
-          </template>
-          <v-list>
-            <v-list-item>
-              <v-list-item-title>
-                <router-link to="/logout">
-                  <i class="material-icons" title="Logout">logout</i> Logout
-                </router-link>
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-        </div>
-        <div
-          class="add-button"
-          @click="showAddLog(null)"
-          v-if="user && user.admin"
-          title="Add new log"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            width="20px"
-            height="20px"
-          >
-            <path
-              fill-rule="evenodd"
-              fill="#fff"
-              d="M11.000,-0.000 L9.000,-0.000 L9.000,9.000 L-0.000,9.000 L-0.000,11.000 L9.000,11.000 L9.000,20.000 L11.000,20.000 L11.000,11.000 L20.000,11.000 L20.000,9.000 L11.000,9.000 L11.000,-0.000 Z"
-            />
-          </svg>
+          <v-menu offset-y>
+            <template v-slot:activator="{ on }">
+              <v-btn icon>
+                <i class="material-icons" title="Menu">more_horiz</i>
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item>
+                <v-list-item-title>
+                  <router-link to="/logout">
+                    <i class="material-icons" title="Logout">logout</i> Logout
+                  </router-link>
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </div>
       </div>
       <vue-custom-scrollbar class="scroll-area log" :settings="settings">
-        <p>Journey Log</p>
+        <div class="header">
+          <p>Journey Log</p>
+          <div
+            class="add-button"
+            @click="showAddLog(null)"
+            v-if="user && user.admin"
+            title="Add new log"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              width="20px"
+              height="20px"
+            >
+              <path
+                fill-rule="evenodd"
+                fill="#fff"
+                d="M11.000,-0.000 L9.000,-0.000 L9.000,9.000 L-0.000,9.000 L-0.000,11.000 L9.000,11.000 L9.000,20.000 L11.000,20.000 L11.000,11.000 L20.000,11.000 L20.000,9.000 L11.000,9.000 L11.000,-0.000 Z"
+              />
+            </svg>
+          </div>
+        </div>
         <div class="cruises" v-for="(month, index) in logHierarchy" :key="index">
           <div class="cruise">
             <p class="date" v-if="month.name">{{month.name}}</p>
@@ -73,9 +75,14 @@
                   </div>
                 </div>
               </div>
-              <div class="remove" v-if="user && user.admin" @click.stop="removeLog(log)">
-                <i class="material-icons">delete</i>
-              </div>
+              <v-btn
+                icon
+                class="remove"
+                v-if="user && user.admin"
+                @click.stop="removeLog(log)"
+              >
+                <i class="material-icons" title="Remove log">delete</i>
+              </v-btn>
             </div>
           </div>
         </div>
@@ -269,33 +276,10 @@ export default {
     align-items: center;
     justify-content: space-between;
     padding: 10px 17px;
-    & > .add-button {
-      background-color: #31b9f1;
-      border-radius: 50%;
-      display: flex;
-      flex-flow: row nowrap;
-      justify-content: center;
-      align-items: center;
-      width: 50px;
-      height: 50px;
-      box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.1);
-      cursor: pointer;
-      &:hover {
-        background-color: $control-hover;
-      }
-    }
-  }
 
-  & > .logout {
-    position: relative;
-
-    & > .menu {
-      color: #31b9f1;
-      font-size: 15px;
+    a {
+      color: black;
       text-decoration: none;
-      position: absolute;
-      right: 10px;
-      padding: 5px;
     }
   }
 
@@ -307,8 +291,29 @@ export default {
     background-color: #ececec;
     display: flex;
     flex-flow: column nowrap;
+    & > .header {
+      display: flex;
+      flex-flow: row nowrap;
+      align-items: center;
+      justify-content: space-between;
+      & > .add-button {
+        background-color: #31b9f1;
+        border-radius: 50%;
+        display: flex;
+        flex-flow: row nowrap;
+        justify-content: center;
+        align-items: center;
+        width: 50px;
+        height: 50px;
+        box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        &:hover {
+          background-color: $control-hover;
+        }
+      }
+    }
     & > .cruises {
-      margin-top: 23px;
+      margin-top: 10px;
       & > .cruise {
         &:first-of-type {
           margin-top: 0;
@@ -439,7 +444,8 @@ export default {
             font-size: 15px;
             text-decoration: none;
             position: absolute;
-            right: 10px;
+            right: 0px;
+            top: 0px;
             cursor: pointer;
           }
         }
