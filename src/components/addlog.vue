@@ -9,32 +9,12 @@
         </div>
         <div class="upload-images">
           <div class="title">Add photo</div>
-          <div class="images-wrapper">
-            <div class="images">
-              <div v-for="photo in log.photos" :key="photo.id">
-                <img :src="photo.thumburl" alt />
-                <div class="delete-button">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
-                    width="12px"
-                    height="12px"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      fill="rgb(254, 254, 254)"
-                      d="M12.000,11.000 L11.000,12.000 L6.000,7.000 L1.000,12.000 L-0.000,11.000 L5.000,6.000 L-0.000,1.000 L1.000,-0.000 L6.000,5.000 L11.000,-0.000 L12.000,1.000 L7.000,6.000 L12.000,11.000 Z"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <FileUploader @uploaded="addPhoto"></FileUploader>
-          </div>
+
+          <FileUploader :log="log"></FileUploader>
         </div>
-        <div class="submit-button">
-          <input type="button" value="Submit" @click="submit" />
-        </div>
+      </div>
+      <div class="submit-button">
+        <input type="button" value="Submit" @click="submit" />
       </div>
       <loading :active.sync="isLoading" :can-cancel="false" :is-full-page="true" :opacity="1"></loading>
     </template>
@@ -47,7 +27,6 @@ import CustomDatepicker from "../components/controls/custom-datepicker.vue";
 import FileUploader from "../components/controls/file-uploader.vue";
 import Loading from "vue-loading-overlay";
 import { firestore } from "../firebase";
-import firebase from "firebase/app";
 
 export default {
   name: "AddLog",
@@ -92,7 +71,7 @@ export default {
             .then(nl => {
               console.log("created draft " + nl.id);
               this.id = nl.id;
-              this.$bind("log", firestore.collection("journeylogs").doc(nl.id));
+              this.$bind("log", firestore.collection("journeylogs").doc(nl.id), { maxRefDepth: 3 });
               this.isLoading = false;
             });
         });
@@ -195,20 +174,6 @@ export default {
             });
         }
       }
-    },
-    async addPhoto(id) {
-      firestore
-        .collection("photos")
-        .doc(id)
-        .get()
-        .then(doc => {
-          firestore
-            .collection("journeylogs")
-            .doc(this.log.id)
-            .update({
-              photos: firebase.firestore.FieldValue.arrayUnion(doc.ref)
-            });
-        });
     }
   }
 };
@@ -242,52 +207,6 @@ export default {
     & > .title {
       font-size: 17px;
       color: #282828;
-    }
-    & > .images-wrapper {
-      display: flex;
-      flex-flow: row wrap;
-      align-items: center;
-      & > .images {
-        display: flex;
-        flex-flow: row nowrap;
-        margin-top: 20px;
-        & > * {
-          &:first-of-type > img {
-            border-top-left-radius: 4px;
-            border-bottom-left-radius: 4px;
-          }
-          position: relative;
-          &:last-of-type {
-            & > .delete-button {
-              border-top-right-radius: 4px;
-              border-bottom-right-radius: 4px;
-            }
-          }
-          & > .delete-button {
-            cursor: pointer;
-            display: flex;
-            position: absolute;
-            right: 0px;
-            top: 0px;
-            height: 20px;
-            width: 20px;
-            background-color: rgba(0, 0, 0, 0.67);
-            flex-flow: row nowrap;
-            justify-content: center;
-            align-items: center;
-            &:last-of-type {
-              border-bottom-left-radius: 4px;
-            }
-          }
-          border-top-right-radius: 4px;
-          border-bottom-right-radius: 4px;
-          & > img {
-            border-top-right-radius: 4px;
-            border-bottom-right-radius: 4px;
-          }
-          margin-left: 1px;
-        }
-      }
     }
   }
 }
