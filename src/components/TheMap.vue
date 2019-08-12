@@ -46,13 +46,13 @@
           :path="path.coordinates"
           :editable="false"
           :draggable="false"
-          :options="{geodesic:true, strokeColor:path.color}"
+          :options="{geodesic:true, strokeColor:path.color, zIndex: 100-index}"
         />
         <gmap-polyline
           :path="path.coordinates"
           :editable="false"
           :draggable="false"
-          :options="{geodesic:true, strokeColor:path.color, strokeOpacity: 0.1, strokeWeight: 40}"
+          :options="{geodesic:true, strokeColor:path.color, strokeOpacity: 0.1, strokeWeight: 40, zIndex: 100-index}"
           @click="pathClick(path, $event)"
           @mouseout="linehover = null"
           @mousemove="polyMouseMove(path, $event)"
