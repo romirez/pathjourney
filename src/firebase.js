@@ -6,7 +6,7 @@ import 'firebase/storage'
 // Your web app's Firebase configuration
 const config = {
   apiKey: "***REMOVED***",
-  authDomain: "pathjourney-sypath.firebaseapp.com",
+  authDomain: "sypath.com",
   databaseURL: "https://pathjourney-sypath.firebaseio.com",
   projectId: "pathjourney-sypath",
   storageBucket: "pathjourney-sypath.appspot.com",
