@@ -260,7 +260,7 @@ export default {
           .collection("journeylogs")
           .doc(log.id)
           .delete();
-        this.$modal.hide("dialog");
+        //this.$modal.hide("dialog");
       }
       //     title: "Are you sure you want to remove this log?",
       //     buttons: [

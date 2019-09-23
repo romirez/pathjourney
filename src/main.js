@@ -1,5 +1,4 @@
 import Vue from 'vue'
-import './plugins/vuetify'
 import App from './App.vue'
 import router from './router'
 import { firestorePlugin } from 'vuefire'
@@ -19,8 +18,7 @@ Vue.use(VueGoogleMaps, {
     libraries: 'geometry', key: '***REMOVED***'
   },
 });
-Vue.use(VuetifyDialog);
-
+Vue.use(VuetifyDialog, { context: { vuetify } })
 
 new Vue({
   render: h => h(App),
