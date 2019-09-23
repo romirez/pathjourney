@@ -14,7 +14,7 @@ const UUID = require("uuid-v4");
 admin.initializeApp();
 
 exports.scheduledVesselFinderImport =
-    functions.pubsub.schedule('every 60 minutes').onRun((context) => {
+    functions.pubsub.schedule('every 16 minutes').onRun((context) => {
         console.log("Getting position")
         var options = {
             uri: 'https://api.vesselfinder.com/vesselslist?userkey=***REMOVED***&format=json',

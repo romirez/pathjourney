@@ -8,7 +8,7 @@
         <div class="menu">
           <v-menu offset-y>
             <template v-slot:activator="{ on }">
-              <v-btn icon>
+              <v-btn icon v-on="on">
                 <i class="material-icons" title="Menu">more_horiz</i>
               </v-btn>
             </template>
@@ -24,7 +24,12 @@
           </v-menu>
         </div>
       </div>
-      <vue-custom-scrollbar class="scroll-area log" :settings="settings">
+      <v-tabs v-model="tabs">
+        <v-tabs-slider color="#31b9f1"></v-tabs-slider>
+        <v-tab>Journey Log</v-tab>
+        <v-tab>Segments</v-tab>
+      </v-tabs>
+      <vue-custom-scrollbar class="scroll-area log" :settings="settings" v-if="tabs == 0">
         <div class="header">
           <p>Journey Log</p>
           <div
@@ -69,26 +74,39 @@
                   <img :src="photo.thumburl" alt />
                 </div>
                 <div v-if="log.photos.length > 5">
-                  <img :src="log.photos[5].id + '_thumb.jpg'" alt />
+                  <img :src="log.photos[5].thumburl" alt />
                   <div v-if="log.photos.length > 6" class="overlay">
                     <span>+{{log.photos.length - 5}}</span>
                   </div>
                 </div>
               </div>
-              <v-btn
-                icon
-                class="remove"
-                v-if="user && user.admin"
-                @click.stop="removeLog(log)"
-              >
+              <v-btn icon class="remove" v-if="user && user.admin" @click.stop="removeLog(log)">
                 <i class="material-icons" title="Remove log">delete</i>
               </v-btn>
             </div>
           </div>
         </div>
       </vue-custom-scrollbar>
+      <vue-custom-scrollbar class="scroll-area log" :settings="settings" v-if="tabs == 1">
+        <div class="header">
+          <p>Segments</p>
+          <div class="add-button" v-if="user && user.admin" title="Add new segment">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              width="20px"
+              height="20px"
+            >
+              <path
+                fill-rule="evenodd"
+                fill="#fff"
+                d="M11.000,-0.000 L9.000,-0.000 L9.000,9.000 L-0.000,9.000 L-0.000,11.000 L9.000,11.000 L9.000,20.000 L11.000,20.000 L11.000,11.000 L20.000,11.000 L20.000,9.000 L11.000,9.000 L11.000,-0.000 Z"
+              />
+            </svg>
+          </div>
+        </div>
+      </vue-custom-scrollbar>
     </div>
-    <v-dialog />
     <TheMap
       v-if="!isLoading"
       v-bind:coordinates="coordinates"
@@ -144,7 +162,8 @@ export default {
       isAddLogVisible: false,
       isLoading: false,
       permissionError: false,
-      user: null
+      user: null,
+      tabs: null //v-model for the sidebar tabs
     };
   },
   computed: {
@@ -226,30 +245,44 @@ export default {
       console.log("add log " + JSON.stringify(log));
       this.isAddLogVisible = false;
     },
-    removeLog(log) {
+    async removeLog(log) {
       console.log(log);
-      this.$modal.show("dialog", {
-        title: "Are you sure you want to remove this log?",
-        buttons: [
-          {
-            title: "Remove",
-            handler: () => {
-              if (this.selectLog.id == log.id) {
-                this.selectedLog = null;
-              }
-              firestore
-                .collection("journeylogs")
-                .doc(log.id)
-                .delete();
-              this.$modal.hide("dialog");
-            }
-          },
-          {
-            title: "Cancel",
-            default: true
-          }
-        ]
+      const res = await this.$dialog.confirm({
+        text: "Are you sure you want to remove this log?",
+        title: "Warning"
       });
+
+      if (res) {
+        if (this.selectLog.id == log.id) {
+          this.selectedLog = null;
+        }
+        firestore
+          .collection("journeylogs")
+          .doc(log.id)
+          .delete();
+        this.$modal.hide("dialog");
+      }
+      //     title: "Are you sure you want to remove this log?",
+      //     buttons: [
+      //       {
+      //         title: "Remove",
+      //         handler: () => {
+      //           if (this.selectLog.id == log.id) {
+      //             this.selectedLog = null;
+      //           }
+      //           firestore
+      //             .collection("journeylogs")
+      //             .doc(log.id)
+      //             .delete();
+      //           this.$modal.hide("dialog");
+      //         }
+      //       },
+      //       {
+      //         title: "Cancel",
+      //         default: true
+      //       }
+      //     ]
+      //   });
     }
   }
 };
@@ -270,6 +303,11 @@ export default {
   flex-flow: column nowrap;
   box-shadow: -11px 5px 22px 5px rgba(0, 0, 0, 0.75);
   height: 100%;
+
+  & > .v-tabs {
+    margin: 0px 10px;
+  }
+
   & > .header {
     display: flex;
     flex-flow: row nowrap;
@@ -285,6 +323,7 @@ export default {
 
   & > .log {
     height: 100%;
+    width: 444px;
     overflow-y: scroll;
     font-size: 20px;
     padding: 20px 19px 20px 25px;
@@ -435,6 +474,8 @@ export default {
                 & > img {
                   border-top-right-radius: 4px;
                   border-bottom-right-radius: 4px;
+                  width: 60px;
+                  height: 60px;
                 }
               }
               margin-left: 1px;

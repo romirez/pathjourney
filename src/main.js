@@ -7,8 +7,9 @@ import * as VueGoogleMaps from 'vue2-google-maps'
 import firebase from 'firebase/app'
 import 'material-design-icons-iconfont/dist/material-design-icons.css'
 import "../firebase";
-import VModal from 'vue-js-modal'
 import vuetify from './plugins/vuetify';
+import VuetifyDialog from "vuetify-dialog";
+import "vuetify-dialog/dist/vuetify-dialog.css";
 
 Vue.config.productionTip = false;
 
@@ -18,7 +19,8 @@ Vue.use(VueGoogleMaps, {
     libraries: 'geometry', key: '***REMOVED***'
   },
 });
-Vue.use(VModal, { dialog: true });
+Vue.use(VuetifyDialog);
+
 
 new Vue({
   render: h => h(App),
