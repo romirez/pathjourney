@@ -189,10 +189,16 @@ export default {
       };
     },
     polypath() {
-      function getSegment(segment) {
-        const c1 = [];
+      function getSegments(segment) {
+        const segments = [[]];
+        var lastdate = null;
         segment.forEach(doc => {
-          c1.push({
+          if (lastdate != null && doc.time.toDate() - lastdate > 604800000) {
+            // check if date gap is > 1 week and split segments if so
+            segments.push([]);
+          }
+          lastdate = doc.time.toDate();
+          segments[segments.length - 1].push({
             lat: doc["location"].latitude,
             lng: doc["location"].longitude,
             id: doc.id,
@@ -200,69 +206,78 @@ export default {
             source: doc.source
           });
         });
-        return c1;
+        return segments;
       }
 
       var date = new Date();
       const segments = [];
-      segments.push({
-        color: "#F6655B",
-        stroke: 4,
-        opacity: 1,
-        coordinates: getSegment(
-          this.coordinates.filter(
-            c =>
-              c.time.toDate() > new Date(date.getFullYear(), date.getMonth(), 1)
-          )
+
+      var coordsegments = getSegments(
+        this.coordinates.filter(
+          c =>
+            c.time.toDate() <
+            new Date(date.getFullYear(), date.getMonth() - 1, 1)
         )
+      );
+      coordsegments.forEach(coords => {
+        segments.push({
+          color: "#C6C1AB",
+          stroke: 4,
+          opacity: 1,
+          coordinates: coords
+        });
       });
 
-      segments.push({
-        color: "#DCBF85",
-        stroke: 4,
-        opacity: 1,
-        coordinates: getSegment(
-          this.coordinates.filter(
-            c =>
-              c.time.toDate() >
-                new Date(date.getFullYear(), date.getMonth() - 1, 1) &&
-              c.time.toDate() < new Date(date.getFullYear(), date.getMonth(), 1)
-          )
+      coordsegments = getSegments(
+        this.coordinates.filter(
+          c =>
+            c.time.toDate() >
+              new Date(date.getFullYear(), date.getMonth() - 1, 1) &&
+            c.time.toDate() < new Date(date.getFullYear(), date.getMonth(), 1)
         )
+      );
+      coordsegments.forEach(coords => {
+        segments.push({
+          color: "#DCBF85",
+          stroke: 4,
+          opacity: 1,
+          coordinates: coords
+        });
+      });
+
+      coordsegments = getSegments(
+        this.coordinates.filter(
+          c =>
+            c.time.toDate() > new Date(date.getFullYear(), date.getMonth(), 1)
+        )
+      );
+      coordsegments.forEach(coords => {
+        segments.push({
+          color: "#F6655B",
+          stroke: 4,
+          opacity: 1,
+          coordinates: coords
+        });
       });
 
       //add last point to next segment to have unbroken path
-      if (
-        segments[0].coordinates.length > 0 &&
-        segments[1].coordinates.length > 0
-      )
-        segments[1].coordinates.push(
-          segments[0].coordinates[0]
-        );
+      for (var i = 0; i < segments.length - 1; i++) {
+        if (
+          segments[i].coordinates.length > 0 &&
+          segments[i + 1].coordinates.length > 0 &&
+          segments[i].coordinates[segments[i].coordinates.length - 1].time -
+            segments[i + 1].coordinates[0].time >
+            -604800000
+        ) {
+          console.log(
+            segments[i].coordinates[segments[i].coordinates.length - 1].time -
+              segments[i + 1].coordinates[0].time
+          );
+          segments[i].coordinates.push(segments[i + 1].coordinates[0]);
+        }
+      }
 
-      segments.push({
-        color: "#C6C1AB",
-        stroke: 4,
-        opacity: 1,
-        coordinates: getSegment(
-          this.coordinates.filter(
-            c =>
-              c.time.toDate() <
-              new Date(date.getFullYear(), date.getMonth() - 1, 1)
-          )
-        )
-      });
-
-      //add last point to next segment to have unbroken path
-      if (
-        segments[2].coordinates.length > 0 &&
-        segments[1].coordinates.length > 0
-      )
-        segments[2].coordinates.push(
-          segments[1].coordinates[0]
-        );
-
-      return segments;
+      return segments.reverse();
     },
     selectedLogCoords() {
       return new this.google.maps.LatLng(

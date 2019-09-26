@@ -58,14 +58,9 @@ export default {
           .catch(error => {
             var errorMessage = error.message;
             console.log(errorMessage);
-            this.$modal.show("dialog", {
-              title: "Unable to login: " + errorMessage,
-              buttons: [
-                {
-                  title: "OK",
-                  default: true
-                }
-              ]
+            this.$dialog.error({
+              text: "Unable to login: " + errorMessage,
+              title: "Error"
             });
           });
       }

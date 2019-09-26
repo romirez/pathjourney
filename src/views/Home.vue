@@ -105,6 +105,9 @@
             </svg>
           </div>
         </div>
+        <div class="cruises" v-for="(segment, index) in segments" :key="index">
+          <div class="cruise">{{segment.name}}</div>
+        </div>
       </vue-custom-scrollbar>
     </div>
     <TheMap
@@ -207,20 +210,33 @@ export default {
             .where("draft", "==", false)
             .orderBy("log_time", "desc")
         )
-          .then(() => {
+          .then(
             this.$bind(
-              "user",
-              firestore.collection("users").doc(firebase.auth().currentUser.uid)
+              "segments",
+              firestore.collection("segments").orderBy("end", "desc")
             )
               .then(() => {
-                this.isLoading = false;
+                this.$bind(
+                  "user",
+                  firestore
+                    .collection("users")
+                    .doc(firebase.auth().currentUser.uid)
+                )
+                  .then(() => {
+                    this.isLoading = false;
+                  })
+                  .catch(e => {
+                    console.log(e);
+                    this.permissionError = true;
+                    this.isLoading = false;
+                  });
               })
               .catch(e => {
                 console.log(e);
                 this.permissionError = true;
                 this.isLoading = false;
-              });
-          })
+              })
+          )
           .catch(e => {
             console.log(e);
             this.permissionError = true;
@@ -260,29 +276,7 @@ export default {
           .collection("journeylogs")
           .doc(log.id)
           .delete();
-        //this.$modal.hide("dialog");
       }
-      //     title: "Are you sure you want to remove this log?",
-      //     buttons: [
-      //       {
-      //         title: "Remove",
-      //         handler: () => {
-      //           if (this.selectLog.id == log.id) {
-      //             this.selectedLog = null;
-      //           }
-      //           firestore
-      //             .collection("journeylogs")
-      //             .doc(log.id)
-      //             .delete();
-      //           this.$modal.hide("dialog");
-      //         }
-      //       },
-      //       {
-      //         title: "Cancel",
-      //         default: true
-      //       }
-      //     ]
-      //   });
     }
   }
 };

@@ -142,16 +142,19 @@ exports.cleanDrafts =
         var num = 0;
         console.log("deleting drafts..")
 
-        db.collection("journeylogs").where("draft", "==", true).where("add_time", "<", new Date(date.getFullYear(), date.getMonth(), date.getDay() - 1)).get().then(r => {
+        return db.collection("journeylogs").where("draft", "==", true).where("add_time", "<", new Date(date.getFullYear(), date.getMonth(), date.getDay() - 1)).get().then(r => {
             r.forEach(doc => {
                 batch.delete(doc.ref);
                 num += 1;
-            })
-        })
-        return batch.commit().then(() => {
-            console.log("deleted " + num + " drafts");
-        });
+            });
 
+            return null;
+        }).then(() => {
+            return batch.commit().then(() => {
+                console.log("deleted " + num + " drafts");
+                return null;
+            });    
+        });
     });
 
 exports.vesselFinderImport = functions.https.onRequest((req, res) => {
