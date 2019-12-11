@@ -17,7 +17,7 @@ exports.scheduledVesselFinderImport =
     functions.pubsub.schedule('every 16 minutes').onRun((context) => {
         console.log("Getting position")
         var options = {
-            uri: 'https://api.vesselfinder.com/vesselslist?userkey=***REMOVED***&format=json',
+            uri: 'https://api.vesselfinder.com/vesselslist?userkey=' + process.env.VESSELFINDER_APIKEY + '&format=json',
             json: true // Automatically stringifies the body to JSON
         };
         return rp(options)
@@ -71,7 +71,7 @@ exports.scheduledKVHImport =
     functions.pubsub.schedule('every 15 minutes').onRun((context) => {
         console.log("Getting position")
         var options = {
-            uri: 'http://app.mykvh.com/api/v1/platform/positioning/***REMOVED***/latest.csv'
+            uri: 'http://app.mykvh.com/api/v1/platform/positioning/' + process.env.KVH_APIKEY + '/latest.csv'
         };
         return rp(options)
             .then(resp => {
@@ -160,7 +160,7 @@ exports.cleanDrafts =
 exports.vesselFinderImport = functions.https.onRequest((req, res) => {
     console.log("Getting position")
     var options = {
-        uri: 'https://api.vesselfinder.com/vesselslist?userkey=***REMOVED***&format=json',
+        uri: 'https://api.vesselfinder.com/vesselslist?userkey=' + process.env.VESSELFINDER_APIKEY + '&format=json',
         json: true // Automatically stringifies the body to JSON
     };
     return rp(options)

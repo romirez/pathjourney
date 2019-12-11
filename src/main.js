@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import './plugins/vuetify'
 import App from './App.vue'
 import router from './router'
 import { firestorePlugin } from 'vuefire'
@@ -15,7 +16,7 @@ Vue.config.productionTip = false;
 Vue.use(firestorePlugin); //for vuefire
 Vue.use(VueGoogleMaps, {
   load: {
-    libraries: 'geometry', key: '***REMOVED***'
+    libraries: 'geometry', key: process.env.GMAPS_APIKEY
   },
 });
 Vue.use(VuetifyDialog, { context: { vuetify } })
