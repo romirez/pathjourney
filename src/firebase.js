@@ -5,7 +5,7 @@ import 'firebase/storage'
 
 // Your web app's Firebase configuration
 const config = {
-  apiKey: process.env.FIREBASE_APIKEY,
+  apiKey: process.env.VUE_APP_FIREBASEAPIKEY,
   authDomain: "sypath.com",
   databaseURL: "https://pathjourney-sypath.firebaseio.com",
   projectId: "pathjourney-sypath",

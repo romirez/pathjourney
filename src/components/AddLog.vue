@@ -10,7 +10,7 @@
         <div class="upload-images">
           <div class="title">Add photo</div>
 
-          <FileUploader :log="log"></FileUploader>
+          <FileUploader :log="log" v-on:rebindLog="rebindLog()"></FileUploader>
         </div>
       </div>
       <div class="submit-button">
@@ -71,7 +71,11 @@ export default {
             .then(nl => {
               console.log("created draft " + nl.id);
               this.id = nl.id;
-              this.$bind("log", firestore.collection("journeylogs").doc(nl.id), { maxRefDepth: 3 });
+              this.$bind(
+                "log",
+                firestore.collection("journeylogs").doc(nl.id),
+                { maxRefDepth: 3 }
+              );
               this.isLoading = false;
             });
         });
@@ -174,6 +178,11 @@ export default {
             });
         }
       }
+    },
+    rebindLog() {
+      var id = this.log.id;
+      this.$unbind("log", false);
+      this.$bind("log", firestore.collection("journeylogs").doc(id));
     }
   }
 };

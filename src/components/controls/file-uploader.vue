@@ -117,6 +117,9 @@ export default {
                             photos: firebase.firestore.FieldValue.arrayUnion(
                               doc.ref
                             )
+                          })
+                          .then(() => {
+                            this.$emit("rebindLog");
                           });
                       });
                   });

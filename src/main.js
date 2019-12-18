@@ -16,7 +16,7 @@ Vue.config.productionTip = false;
 Vue.use(firestorePlugin); //for vuefire
 Vue.use(VueGoogleMaps, {
   load: {
-    libraries: 'geometry', key: process.env.GMAPS_APIKEY
+    libraries: 'geometry', key: process.env.VUE_APP_GMAPSAPIKEY
   },
 });
 Vue.use(VuetifyDialog, { context: { vuetify } })
