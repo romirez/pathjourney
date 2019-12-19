@@ -1,5 +1,5 @@
 <template>
-  <popup :title="'Add event'" @close="$emit('close')">
+  <popup :title="'Add log'" @close="$emit('close')">
     <template v-slot:content>
       <div class="destination-info">
         <div class="text-inputs">
@@ -32,7 +32,6 @@ export default {
   name: "AddLog",
   components: { Popup, CustomInput, CustomDatepicker, FileUploader, Loading },
   props: {
-    title: String,
     coords: String
   },
   data() {

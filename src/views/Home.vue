@@ -90,7 +90,12 @@
       <vue-custom-scrollbar class="scroll-area log" :settings="settings" v-if="tabs == 1">
         <div class="header">
           <p>Segments</p>
-          <div class="add-button" v-if="user && user.admin" title="Add new segment">
+          <div
+            class="add-button"
+            @click="showAddSegment()"
+            v-if="user && user.admin"
+            title="Add new segment"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -107,6 +112,9 @@
         </div>
         <div class="cruises" v-for="(segment, index) in segments" :key="index">
           <div class="cruise">{{segment.name}}</div>
+          <v-btn icon class="remove" v-if="user && user.admin" @click.stop="removeSegment(segment)">
+            <i class="material-icons" title="Remove segment">delete</i>
+          </v-btn>
         </div>
       </vue-custom-scrollbar>
     </div>
@@ -125,6 +133,11 @@
       @submit="addNewLog"
       v-bind:coords="selectedCoords"
     />
+    <AddSegment
+      v-if="isAddSegmentVisible && user && user.admin"
+      @close="isAddSegmentVisible = false;"
+      @submit="addNewSegment"
+    />
     <loading :active.sync="isLoading" :can-cancel="false" :is-full-page="true" :opacity="1"></loading>
     <div v-if="permissionError" class="permissionError">
       You don't have permissions to access this page.
@@ -142,6 +155,7 @@ import { firestore } from "../firebase";
 import Loading from "vue-loading-overlay";
 import "vue-loading-overlay/dist/vue-loading.css";
 import AddLog from "../components/AddLog.vue";
+import AddSegment from "../components/AddSegment.vue";
 import TheMap from "../components/TheMap.vue";
 
 export default {
@@ -149,6 +163,7 @@ export default {
   components: {
     VueCustomScrollbar,
     AddLog,
+    AddSegment,
     Loading,
     TheMap
   },
@@ -163,6 +178,7 @@ export default {
         maxScrollbarLength: 60
       },
       isAddLogVisible: false,
+      isAddSegmentVisible: false,
       isLoading: false,
       permissionError: false,
       user: null,
@@ -198,6 +214,7 @@ export default {
   },
   mounted() {
     this.isLoading = true;
+        console.log("binding");
     this.$bind(
       "coordinates",
       firestore.collection("coordinates").orderBy("time", "asc")
@@ -213,7 +230,10 @@ export default {
           .then(
             this.$bind(
               "segments",
-              firestore.collection("segments").orderBy("end", "desc")
+              firestore
+                .collection("segments")
+                .where("draft", "==", false)
+                .orderBy("end_date", "desc")
             )
               .then(() => {
                 this.$bind(
@@ -223,6 +243,7 @@ export default {
                     .doc(firebase.auth().currentUser.uid)
                 )
                   .then(() => {
+                    console.log("bindings done");
                     this.isLoading = false;
                   })
                   .catch(e => {
@@ -254,6 +275,9 @@ export default {
       this.selectedCoords = id;
       this.isAddLogVisible = true;
     },
+    showAddSegment() {
+      this.isAddSegmentVisible = true;
+    },
     selectLog(log) {
       this.selectedLog = log;
     },
@@ -261,20 +285,39 @@ export default {
       console.log("add log " + JSON.stringify(log));
       this.isAddLogVisible = false;
     },
+    addNewSegment(segment) {
+      console.log("add segment " + JSON.stringify(segment));
+      this.isAddSegmentVisible = false;
+    },
     async removeLog(log) {
-      console.log(log);
       const res = await this.$dialog.confirm({
         text: "Are you sure you want to remove this log?",
         title: "Warning"
       });
 
       if (res) {
-        if (this.selectLog.id == log.id) {
+        if (this.selectedLog && this.selectedLog.id == log.id) {
           this.selectedLog = null;
         }
         firestore
           .collection("journeylogs")
           .doc(log.id)
+          .delete();
+      }
+    },
+    async removeSegment(segment) {
+      const res = await this.$dialog.confirm({
+        text: "Are you sure you want to remove this segment?",
+        title: "Warning"
+      });
+
+      if (res) {
+        if (this.selectedSegment && this.selectedSegment.id == segment.id) {
+          this.selectedSegment = null;
+        }
+        firestore
+          .collection("segments")
+          .doc(segment.id)
           .delete();
       }
     }
