@@ -4,6 +4,8 @@ This is a project to log GPS coordinates of a sailing vessel (using AIS & KVH co
 
 The webapp is based on Vue.JS, and the backend is run on Firebase (Authentication, Database, Storage, Hosting & Functions)
 
+![frame_chrome_mac_light](https://user-images.githubusercontent.com/6787260/71530089-eaf2a080-289c-11ea-89f4-a92abaddfd7c.png)
+
 ## Project setup
 ```
 npm install
