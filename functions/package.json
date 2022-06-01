@@ -19,7 +19,7 @@
     "request-promise": "^4.2.4",
     "xml-js": "^1.6.11",
     "minipass": "2.7.0",
-    "sharp": "^0.23.0",
+    "sharp": "^0.30.5",
     "fs-extra": "^8.1.0",
     "uuid-v4": "^0.1.0"
   },
